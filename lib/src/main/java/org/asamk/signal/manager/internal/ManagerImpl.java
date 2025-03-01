@@ -1234,6 +1234,7 @@ public class ManagerImpl implements Manager {
     private static final AtomicInteger threadNumber = new AtomicInteger(0);
 
     private void startReceiveThreadIfRequired() {
+        logger.debug("startReceiveThreadIfRequired()");
         if (receiveThread != null || isReceivingSynchronous) {
             return;
         }
@@ -1245,7 +1246,7 @@ public class ManagerImpl implements Manager {
                 receiveThread = null;
 
                 // Check if in the meantime another handler has been registered
-                if (!messageHandlers.isEmpty()) {
+                if (!messageHandlers.isEmpty() && !context.getReceiveHelper().isStopping()) {
                     logger.debug("Another handler has been registered, starting receive thread again");
                     startReceiveThreadIfRequired();
                 }
@@ -1287,9 +1288,10 @@ public class ManagerImpl implements Manager {
             thread.interrupt();
         }
         try {
-            thread.join();
+            thread.join(20000);
         } catch (InterruptedException ignored) {
         }
+        logger.info("stopReceiveThread: thread stopped");
     }
 
     @Override
@@ -1591,15 +1593,19 @@ public class ManagerImpl implements Manager {
 
     @Override
     public void close() {
+        logger.info("Closing ManagerImpl");
         Thread thread;
+        // DF: this is still error-prone, but better than before: we won't lose messages during close now.
         synchronized (messageHandlers) {
-            weakHandlers.clear();
-            messageHandlers.clear();
             thread = receiveThread;
             receiveThread = null;
         }
         if (thread != null) {
             stopReceiveThread(thread);
+        }
+        synchronized (messageHandlers) {
+            weakHandlers.clear();
+            messageHandlers.clear();
         }
         context.close();
         executor.close();
@@ -1618,5 +1624,7 @@ public class ManagerImpl implements Manager {
         }
 
         account = null;
+
+        logger.info("Closing ManagerImpl: Done");
     }
 }

@@ -42,8 +42,8 @@ public class ReceiveHelper {
 
     private ReceiveConfig receiveConfig = new ReceiveConfig(false, false, false);
     private boolean hasCaughtUpWithOldMessages = false;
-    private boolean isWaitingForMessage = false;
-    private boolean shouldStop = false;
+    private volatile boolean isWaitingForMessage = false;
+    private volatile boolean shouldStop = false;
     private Callable authenticationFailureListener;
     private Callable caughtUpWithOldMessagesListener;
 
@@ -69,6 +69,10 @@ public class ReceiveHelper {
     public boolean requestStopReceiveMessages() {
         this.shouldStop = true;
         return isWaitingForMessage;
+    }
+
+    public boolean isStopping() {
+        return shouldStop;
     }
 
     public void receiveMessagesContinuously(Manager.ReceiveMessageHandler handler) {
@@ -111,7 +115,6 @@ public class ReceiveHelper {
             queuedActions.clear();
             signalWebSocket.disconnect();
             webSocketStateDisposable.dispose();
-            shouldStop = false;
         }
     }
 
@@ -210,6 +213,8 @@ public class ReceiveHelper {
             } catch (Exception e) {
                 logger.error("Unknown error when receiving messages", e);
                 continue;
+            } finally {
+                isWaitingForMessage = false;
             }
 
             try {
