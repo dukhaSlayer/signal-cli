@@ -255,7 +255,7 @@ public final class ProfileHelper {
         try {
             blockingGetProfile(retrieveProfile(recipientId, SignalServiceProfile.RequestType.PROFILE));
         } catch (IOException e) {
-            logger.warn("Failed to retrieve profile, ignoring: {}", e.getMessage());
+            logger.warn("Failed to retrieve profile, ignoring", e);
         }
 
         return account.getProfileStore().getProfile(recipientId);
@@ -267,7 +267,9 @@ public final class ProfileHelper {
         }
         // Profiles are cached for 6h before retrieving them again, unless forced
         final var now = System.currentTimeMillis();
-        return now - profile.getLastUpdateTimestamp() >= 6 * 60 * 60 * 1000;
+        // DS: on high load querying profiles creates rate limiting issues, let's bump it to 24 for now
+        // TODO: move this value to settings
+        return now - profile.getLastUpdateTimestamp() >= 24 * 60 * 60 * 1000;
     }
 
     private Profile decryptProfileAndDownloadAvatar(
@@ -318,7 +320,8 @@ public final class ProfileHelper {
         var unidentifiedAccess = getUnidentifiedAccess(recipientId);
         var profileKey = Optional.ofNullable(account.getProfileStore().getProfileKey(recipientId));
 
-        logger.trace("Retrieving profile for {} {}",
+        // DS: demote this log back to trace after testing
+        logger.debug("Retrieving profile for {} {}",
                 recipientId,
                 profileKey.isPresent() ? "with profile key" : "without profile key");
         final var address = context.getRecipientHelper().resolveSignalServiceAddress(recipientId);
@@ -378,7 +381,7 @@ public final class ProfileHelper {
 
             logger.trace("Done handling retrieved profile");
         }).doOnError(e -> {
-            logger.warn("Failed to retrieve profile, ignoring: {}", e.getMessage());
+            logger.warn("Failed to retrieve profile, ignoring", e);
             final var profile = account.getProfileStore().getProfile(recipientId);
             final var newProfile = (
                     profile == null ? Profile.newBuilder() : Profile.newBuilder(profile)

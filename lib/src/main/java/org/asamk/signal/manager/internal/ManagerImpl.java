@@ -237,6 +237,12 @@ public class ManagerImpl implements Manager {
         return account.getNumber();
     }
 
+    @Override
+    public org.asamk.signal.manager.api.RecipientAddress getSelfRecipientAddress() {
+        var a = account.getSelfRecipientAddress();
+        return new org.asamk.signal.manager.api.RecipientAddress(a.aci().map(aci -> aci.getRawUuid()).get());
+    }
+
     public void checkAccountState() throws IOException {
         context.getAccountHelper().checkAccountState();
         final var lastRecipientsRefresh = account.getLastRecipientsRefresh();
@@ -814,9 +820,11 @@ public class ManagerImpl implements Manager {
                 quotedAttachments.add(quotedAttachment);
             }
             messageBuilder.withQuote(new SignalServiceDataMessage.Quote(quote.timestamp(),
-                    context.getRecipientHelper()
-                            .resolveSignalServiceAddress(context.getRecipientHelper().resolveRecipient(quote.author()))
-                            .getServiceId(),
+                    quote.author() == null
+                        ? null
+                        : context.getRecipientHelper()
+                                .resolveSignalServiceAddress(context.getRecipientHelper().resolveRecipient(quote.author()))
+                                .getServiceId(),
                     quote.message(),
                     quotedAttachments,
                     resolveMentions(quote.mentions()),
@@ -1469,8 +1477,10 @@ public class ManagerImpl implements Manager {
             }
             serviceId = address.serviceId().get();
         } catch (UnregisteredRecipientException e) {
+            logger.warn("getIdentities failed", e);
             return List.of();
         }
+        logger.debug("getIdentities got serviceId={}", serviceId);
         final var identity = account.getIdentityKeyStore().getIdentityInfo(serviceId);
         return identity == null ? List.of() : List.of(toIdentity(identity));
     }

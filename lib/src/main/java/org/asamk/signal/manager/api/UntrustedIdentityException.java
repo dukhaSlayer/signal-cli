@@ -6,7 +6,7 @@ public class UntrustedIdentityException extends Exception {
     private final int senderDevice;
 
     public UntrustedIdentityException(final RecipientAddress sender, final int senderDevice) {
-        super("Untrusted identity: " + sender.getIdentifier());
+        super("Untrusted identity: " + sender.getIdentifier() + ". Device: " + senderDevice);
         this.sender = sender;
         this.senderDevice = senderDevice;
     }

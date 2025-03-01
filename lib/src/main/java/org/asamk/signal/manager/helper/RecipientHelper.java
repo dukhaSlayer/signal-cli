@@ -86,6 +86,7 @@ public class RecipientHelper {
                 try {
                     return getRegisteredUserByNumber(number);
                 } catch (Exception e) {
+                    logger.warn("Failed to get uuid for e164 number: {}", number.hashCode(), e);
                     return null;
                 }
             });
@@ -203,6 +204,7 @@ public class RecipientHelper {
         try {
             aciMap = getRegisteredUsers(Set.of(number), true);
         } catch (NumberFormatException e) {
+            logger.warn("Failed to parse number: {}", number.hashCode(), e);
             throw new UnregisteredRecipientException(new org.asamk.signal.manager.api.RecipientAddress(number));
         }
         final var user = aciMap.get(number);
@@ -224,7 +226,7 @@ public class RecipientHelper {
             logger.debug("No new numbers to query.");
             return Map.of();
         }
-        logger.trace("Querying CDSI for {} new numbers ({} previous), isPartialRefresh={}",
+        logger.debug("Querying CDSI for {} new numbers ({} previous), isPartialRefresh={}",
                 newNumbers.size(),
                 previousNumbers.size(),
                 isPartialRefresh);
