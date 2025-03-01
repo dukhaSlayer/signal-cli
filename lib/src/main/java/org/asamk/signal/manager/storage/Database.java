@@ -43,8 +43,51 @@ public abstract class Database implements AutoCloseable {
         }
     }
 
+    record ConnectionInfo(String stacktrace, Long timestamp) {
+        ConnectionInfo(String stacktrace) {
+            this(stacktrace, System.currentTimeMillis());
+        }
+        Long age() {
+            return System.currentTimeMillis() - timestamp;
+        }
+    }
+    private static final Map<String, ConnectionInfo> OpenConnections = new LinkedHashMap<>();
+
+    /**
+     * DS: there are connection deadlocks, lets add some logic to track them.
+     * TODO: remove this when client session is stable.
+     */
     public final Connection getConnection() throws SQLException {
-        return dataSource.getConnection();
+        var id = UUID.randomUUID().toString();
+        var stack = Arrays.stream(Thread.currentThread().getStackTrace()).map(Objects::toString).collect(Collectors.joining(", "));
+        logger.trace("getConnection: {} on {}", id, stack);
+        OpenConnections.put(id, new ConnectionInfo(stack));
+        final Connection connection;
+        try {
+            connection = dataSource.getConnection();
+        } catch (SQLException e) {
+            logger.error("getConnection() failed for {}, possible deadlock. Open connections (the last one is failed):\n {}",
+                id,
+                OpenConnections.entrySet().stream().map(kv ->
+                    kv.getKey() + ": " + kv.getValue().age() + ": " + kv.getValue().stacktrace()).collect(Collectors.joining("; \n")),
+                e);
+            throw e;
+        }
+        return wrap(logger, id, connection);
+    }
+
+    public static Connection wrap(Logger logger, String id, Connection originalConnection) {
+        return (Connection) Proxy.newProxyInstance(
+            originalConnection.getClass().getClassLoader(),
+            new Class[]{Connection.class},
+            (proxy, method, args) -> {
+                if ("close".equals(method.getName())) {
+                    logger.trace("Connection.close() for {}", id);
+                    OpenConnections.remove(id);
+                }
+                return method.invoke(originalConnection, args);
+            }
+        );
     }
 
     @Override
