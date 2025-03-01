@@ -92,14 +92,14 @@ public abstract class Database implements AutoCloseable {
     private static HikariDataSource getHikariDataSource(final String databaseFile) {
         final var sqliteConfig = new SQLiteConfig();
         sqliteConfig.setBusyTimeout(60_000);
-        sqliteConfig.setTransactionMode(SQLiteConfig.TransactionMode.IMMEDIATE);
+        sqliteConfig.setTransactionMode(SQLiteConfig.TransactionMode.DEFERRED);
 
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl("jdbc:sqlite:" + databaseFile + "?foreign_keys=ON&journal_mode=wal");
         config.setDataSourceProperties(sqliteConfig.toProperties());
-        config.setMinimumIdle(1);
-        config.setConnectionTimeout(90_000);
-        config.setMaximumPoolSize(50);
+        config.setMinimumIdle(0);
+        config.setConnectionTimeout(30_000);
+        config.setMaximumPoolSize(1); // this + lower timeouts allows us to find connection issues faster
         config.setMaxLifetime(0);
         return new HikariDataSource(config);
     }

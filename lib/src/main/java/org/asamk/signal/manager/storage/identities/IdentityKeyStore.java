@@ -3,6 +3,7 @@ package org.asamk.signal.manager.storage.identities;
 import org.asamk.signal.manager.api.TrustLevel;
 import org.asamk.signal.manager.api.TrustNewIdentity;
 import org.asamk.signal.manager.storage.Database;
+import org.asamk.signal.manager.storage.StoreBase;
 import org.asamk.signal.manager.storage.Utils;
 import org.asamk.signal.manager.storage.recipients.RecipientStore;
 import org.signal.libsignal.protocol.IdentityKey;
@@ -22,11 +23,10 @@ import java.util.Objects;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.subjects.PublishSubject;
 
-public class IdentityKeyStore {
+public class IdentityKeyStore extends StoreBase {
 
     private static final Logger logger = LoggerFactory.getLogger(IdentityKeyStore.class);
     private static final String TABLE_IDENTITY = "identity";
-    private final Database database;
     private final TrustNewIdentity trustNewIdentity;
     private final RecipientStore recipientStore;
     private final PublishSubject<ServiceId> identityChanges = PublishSubject.create();
@@ -53,9 +53,23 @@ public class IdentityKeyStore {
             final TrustNewIdentity trustNewIdentity,
             RecipientStore recipientStore
     ) {
-        this.database = database;
+        super(database, null);
         this.trustNewIdentity = trustNewIdentity;
         this.recipientStore = recipientStore;
+    }
+
+    public IdentityKeyStore(
+        final Connection connection,
+        final TrustNewIdentity trustNewIdentity,
+        RecipientStore recipientStore
+    ) {
+        super(null, connection);
+        this.trustNewIdentity = trustNewIdentity;
+        this.recipientStore = recipientStore.withConnection(connection);
+    }
+
+    public IdentityKeyStore withConnection(final Connection connection) {
+        return new IdentityKeyStore(connection, trustNewIdentity, recipientStore);
     }
 
     public Observable<ServiceId> getIdentityChanges() {
@@ -66,20 +80,12 @@ public class IdentityKeyStore {
         return saveIdentity(serviceId.toString(), identityKey);
     }
 
-    public boolean saveIdentity(
-            final Connection connection,
-            final ServiceId serviceId,
-            final IdentityKey identityKey
-    ) throws SQLException {
-        return saveIdentity(connection, serviceId.toString(), identityKey);
-    }
-
     boolean saveIdentity(final String address, final IdentityKey identityKey) {
         if (isRetryingDecryption) {
             return false;
         }
-        try (final var connection = database.getConnection()) {
-            return saveIdentity(connection, address, identityKey);
+        try (final var connection = getConnectionImpl()) {
+            return saveIdentity(connection.get(), address, identityKey);
         } catch (SQLException e) {
             throw new RuntimeException("Failed update identity store", e);
         }
@@ -106,14 +112,14 @@ public class IdentityKeyStore {
     }
 
     public boolean setIdentityTrustLevel(ServiceId serviceId, IdentityKey identityKey, TrustLevel trustLevel) {
-        try (final var connection = database.getConnection()) {
-            return setIdentityTrustLevel(connection, serviceId, identityKey, trustLevel);
+        try (final var connection = getConnectionImpl()) {
+            return setIdentityTrustLevel(connection.get(), serviceId, identityKey, trustLevel);
         } catch (SQLException e) {
             throw new RuntimeException("Failed update identity store", e);
         }
     }
 
-    public boolean setIdentityTrustLevel(
+    private boolean setIdentityTrustLevel(
             final Connection connection,
             final ServiceId serviceId,
             final IdentityKey identityKey,
@@ -152,7 +158,8 @@ public class IdentityKeyStore {
             return true;
         }
 
-        try (final var connection = database.getConnection()) {
+        try (final var connectionHolder = getConnectionImpl()) {
+            final var connection = connectionHolder.get();
             // TODO implement possibility for different handling of incoming/outgoing trust decisions
             var identityInfo = loadIdentity(connection, address);
             if (identityInfo == null) {
@@ -184,26 +191,22 @@ public class IdentityKeyStore {
     }
 
     public IdentityInfo getIdentityInfo(String address) {
-        try (final var connection = database.getConnection()) {
-            return loadIdentity(connection, address);
+        try (final var connection = getConnectionImpl()) {
+            return loadIdentity(connection.get(), address);
         } catch (SQLException e) {
             throw new RuntimeException("Failed read from identity store", e);
         }
     }
 
-    public IdentityInfo getIdentityInfo(Connection connection, String address) throws SQLException {
-        return loadIdentity(connection, address);
-    }
-
     public List<IdentityInfo> getIdentities() {
-        try (final var connection = database.getConnection()) {
+        try (final var connection = getConnectionImpl()) {
             final var sql = (
                     """
                     SELECT i.address, i.identity_key, i.added_timestamp, i.trust_level
                     FROM %s AS i
                     """
             ).formatted(TABLE_IDENTITY);
-            try (final var statement = connection.prepareStatement(sql)) {
+            try (final var statement = connection.get().prepareStatement(sql)) {
                 return Utils.executeQueryForStream(statement, this::getIdentityInfoFromResultSet)
                         .filter(Objects::nonNull)
                         .toList();
@@ -214,8 +217,8 @@ public class IdentityKeyStore {
     }
 
     public void deleteIdentity(final ServiceId serviceId) {
-        try (final var connection = database.getConnection()) {
-            deleteIdentity(connection, serviceId.toString());
+        try (final var connection = getConnectionImpl()) {
+            deleteIdentity(connection.get(), serviceId.toString());
         } catch (SQLException e) {
             throw new RuntimeException("Failed update identity store", e);
         }
@@ -224,12 +227,12 @@ public class IdentityKeyStore {
     void addLegacyIdentities(final Collection<IdentityInfo> identities) {
         logger.debug("Migrating legacy identities to database");
         long start = System.nanoTime();
-        try (final var connection = database.getConnection()) {
-            connection.setAutoCommit(false);
+        try (final var connection = getConnectionImpl()) {
+            connection.get().setAutoCommit(false);
             for (final var identityInfo : identities) {
-                storeIdentity(connection, identityInfo);
+                storeIdentity(connection.get(), identityInfo);
             }
-            connection.commit();
+            connection.get().commit();
         } catch (SQLException e) {
             throw new RuntimeException("Failed update identity store", e);
         }
@@ -286,7 +289,7 @@ public class IdentityKeyStore {
             statement.setInt(4, identityInfo.getTrustLevel().ordinal());
             statement.executeUpdate();
         }
-        recipientStore.rotateStorageId(connection, identityInfo.getServiceId());
+        recipientStore.withConnection(connection).rotateStorageId(identityInfo.getServiceId());
     }
 
     private void deleteIdentity(final Connection connection, final String address) throws SQLException {

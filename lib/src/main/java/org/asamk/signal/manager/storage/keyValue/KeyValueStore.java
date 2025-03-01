@@ -34,6 +34,10 @@ public class KeyValueStore {
         }
     }
 
+    public ConnectedKeyValueStore withConnection(Connection connection) {
+        return new ConnectedKeyValueStore(connection);
+    }
+
     public KeyValueStore(final Database database) {
         this.database = database;
     }
@@ -49,7 +53,7 @@ public class KeyValueStore {
         try (final var connection = database.getConnection()) {
             return getEntry(connection, key);
         } catch (SQLException e) {
-            throw new RuntimeException("Failed read from key_value store", e);
+            throw new RuntimeException("Failed read from key_value store for " + key.key(), e);
         }
     }
 
@@ -57,11 +61,11 @@ public class KeyValueStore {
         try (final var connection = database.getConnection()) {
             return storeEntry(connection, key, value);
         } catch (SQLException e) {
-            throw new RuntimeException("Failed update key_value store", e);
+            throw new RuntimeException("Failed update key_value store for " + key.key(), e);
         }
     }
 
-    public <T> T getEntry(final Connection connection, final KeyValueEntry<T> key) throws SQLException {
+    protected <T> T getEntry(final Connection connection, final KeyValueEntry<T> key) throws SQLException {
         final var sql = (
                 """
                 SELECT key, value
@@ -88,7 +92,7 @@ public class KeyValueStore {
         }
     }
 
-    public <T> boolean storeEntry(
+    protected <T> boolean storeEntry(
             final Connection connection,
             final KeyValueEntry<T> key,
             final T value
