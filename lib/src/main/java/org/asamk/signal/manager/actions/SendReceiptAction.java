@@ -2,6 +2,8 @@ package org.asamk.signal.manager.actions;
 
 import org.asamk.signal.manager.helper.Context;
 import org.asamk.signal.manager.storage.recipients.RecipientId;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.whispersystems.signalservice.api.messages.SignalServiceReceiptMessage;
 
 import java.util.ArrayList;
@@ -9,6 +11,7 @@ import java.util.List;
 import java.util.Objects;
 
 public class SendReceiptAction implements HandleAction {
+    private static final Logger log = LoggerFactory.getLogger(SendReceiptAction.class);
 
     private final RecipientId recipientId;
     private final SignalServiceReceiptMessage.Type type;
@@ -35,6 +38,8 @@ public class SendReceiptAction implements HandleAction {
     public void mergeOther(final HandleAction action) {
         if (action instanceof SendReceiptAction sendReceiptAction) {
             this.timestamps.addAll(sendReceiptAction.timestamps);
+        } else {
+            log.warn("Merge {} Received unexpected action: {}", this, action);
         }
     }
 
