@@ -87,6 +87,8 @@ public interface Manager extends Closeable {
 
     String getSelfNumber();
 
+    RecipientAddress getSelfRecipientAddress();
+
     /**
      * This is used for checking a set of phone numbers for registration on Signal
      *
