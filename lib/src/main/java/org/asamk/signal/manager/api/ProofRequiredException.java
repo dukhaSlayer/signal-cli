@@ -41,4 +41,14 @@ public class ProofRequiredException extends Exception {
             };
         }
     }
+
+    @Override
+    public String toString() {
+        var name = getClass().getSimpleName();
+        return name + " [" +
+            "token='...'" +
+            ", options=" + options.stream().map(java.util.Objects::toString).collect(Collectors.joining(",")) +
+            ", retryAfterSeconds=" + retryAfterSeconds +
+            ']';
+    }
 }
