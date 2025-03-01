@@ -12,4 +12,5 @@ local.properties
 out/
 .DS_Store
 /bin/
+bin
 /test-config/

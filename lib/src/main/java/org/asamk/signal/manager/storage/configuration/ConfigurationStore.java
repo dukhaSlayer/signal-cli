@@ -13,32 +13,39 @@ public class ConfigurationStore {
     private final KeyValueStore keyValueStore;
     private final RecipientStore recipientStore;
 
-    private final KeyValueEntry<Boolean> readReceipts = new KeyValueEntry<>("config-read-receipts", Boolean.class);
-    private final KeyValueEntry<Boolean> unidentifiedDeliveryIndicators = new KeyValueEntry<>(
+    private final static KeyValueEntry<Boolean> readReceipts = new KeyValueEntry<>("config-read-receipts", Boolean.class);
+    private final static KeyValueEntry<Boolean> unidentifiedDeliveryIndicators = new KeyValueEntry<>(
             "config-unidentified-delivery-indicators",
             Boolean.class);
-    private final KeyValueEntry<Boolean> typingIndicators = new KeyValueEntry<>("config-typing-indicators",
+    private final static KeyValueEntry<Boolean> typingIndicators = new KeyValueEntry<>("config-typing-indicators",
             Boolean.class);
-    private final KeyValueEntry<Boolean> linkPreviews = new KeyValueEntry<>("config-link-previews", Boolean.class);
-    private final KeyValueEntry<Boolean> phoneNumberUnlisted = new KeyValueEntry<>("config-phone-number-unlisted",
+    private final static KeyValueEntry<Boolean> linkPreviews = new KeyValueEntry<>("config-link-previews", Boolean.class);
+    private final static KeyValueEntry<Boolean> phoneNumberUnlisted = new KeyValueEntry<>("config-phone-number-unlisted",
             Boolean.class);
-    private final KeyValueEntry<PhoneNumberSharingMode> phoneNumberSharingMode = new KeyValueEntry<>(
+    private final static KeyValueEntry<PhoneNumberSharingMode> phoneNumberSharingMode = new KeyValueEntry<>(
             "config-phone-number-sharing-mode",
             PhoneNumberSharingMode.class);
-    private final KeyValueEntry<String> usernameLinkColor = new KeyValueEntry<>("username-link-color", String.class);
+    private final static KeyValueEntry<String> usernameLinkColor = new KeyValueEntry<>("username-link-color", String.class);
 
     public ConfigurationStore(final KeyValueStore keyValueStore, RecipientStore recipientStore) {
         this.keyValueStore = keyValueStore;
         this.recipientStore = recipientStore;
     }
 
+    public ConnectedConfigurationStore withConnection(final Connection connection) throws SQLException {
+        return new ConnectedConfigurationStore(keyValueStore, recipientStore, connection);
+    }
+
     public Boolean getReadReceipts() {
         return keyValueStore.getEntry(readReceipts);
     }
 
-    public Boolean getReadReceipts(final Connection connection) throws SQLException {
-        return keyValueStore.getEntry(connection, readReceipts);
-    }
+    // DS: thanks to `withConnection()` method we don't need these versions.
+    // Commenting them out for now, to simplify merge. Will try to refactor connection management to use context object pattern.
+
+//    public Boolean getReadReceipts(final Connection connection) throws SQLException {
+//        return keyValueStore.getEntry(connection, readReceipts);
+//    }
 
     public void setReadReceipts(final boolean value) {
         if (keyValueStore.storeEntry(readReceipts, value)) {
@@ -46,19 +53,13 @@ public class ConfigurationStore {
         }
     }
 
-    public void setReadReceipts(final Connection connection, final boolean value) throws SQLException {
-        if (keyValueStore.storeEntry(connection, readReceipts, value)) {
-            recipientStore.rotateSelfStorageId(connection);
-        }
-    }
-
     public Boolean getUnidentifiedDeliveryIndicators() {
         return keyValueStore.getEntry(unidentifiedDeliveryIndicators);
     }
 
-    public Boolean getUnidentifiedDeliveryIndicators(final Connection connection) throws SQLException {
-        return keyValueStore.getEntry(connection, unidentifiedDeliveryIndicators);
-    }
+//    public Boolean getUnidentifiedDeliveryIndicators(final Connection connection) throws SQLException {
+//        return keyValueStore.getEntry(connection, unidentifiedDeliveryIndicators);
+//    }
 
     public void setUnidentifiedDeliveryIndicators(final boolean value) {
         if (keyValueStore.storeEntry(unidentifiedDeliveryIndicators, value)) {
@@ -66,22 +67,13 @@ public class ConfigurationStore {
         }
     }
 
-    public void setUnidentifiedDeliveryIndicators(
-            final Connection connection,
-            final boolean value
-    ) throws SQLException {
-        if (keyValueStore.storeEntry(connection, unidentifiedDeliveryIndicators, value)) {
-            recipientStore.rotateSelfStorageId(connection);
-        }
-    }
-
     public Boolean getTypingIndicators() {
         return keyValueStore.getEntry(typingIndicators);
     }
 
-    public Boolean getTypingIndicators(final Connection connection) throws SQLException {
-        return keyValueStore.getEntry(connection, typingIndicators);
-    }
+//    public Boolean getTypingIndicators(final Connection connection) throws SQLException {
+//        return keyValueStore.getEntry(connection, typingIndicators);
+//    }
 
     public void setTypingIndicators(final boolean value) {
         if (keyValueStore.storeEntry(typingIndicators, value)) {
@@ -89,19 +81,13 @@ public class ConfigurationStore {
         }
     }
 
-    public void setTypingIndicators(final Connection connection, final boolean value) throws SQLException {
-        if (keyValueStore.storeEntry(connection, typingIndicators, value)) {
-            recipientStore.rotateSelfStorageId(connection);
-        }
-    }
-
     public Boolean getLinkPreviews() {
         return keyValueStore.getEntry(linkPreviews);
     }
 
-    public Boolean getLinkPreviews(final Connection connection) throws SQLException {
-        return keyValueStore.getEntry(connection, linkPreviews);
-    }
+//    public Boolean getLinkPreviews(final Connection connection) throws SQLException {
+//        return keyValueStore.getEntry(connection, linkPreviews);
+//    }
 
     public void setLinkPreviews(final boolean value) {
         if (keyValueStore.storeEntry(linkPreviews, value)) {
@@ -109,19 +95,13 @@ public class ConfigurationStore {
         }
     }
 
-    public void setLinkPreviews(final Connection connection, final boolean value) throws SQLException {
-        if (keyValueStore.storeEntry(connection, linkPreviews, value)) {
-            recipientStore.rotateSelfStorageId(connection);
-        }
-    }
-
     public Boolean getPhoneNumberUnlisted() {
         return keyValueStore.getEntry(phoneNumberUnlisted);
     }
 
-    public Boolean getPhoneNumberUnlisted(final Connection connection) throws SQLException {
-        return keyValueStore.getEntry(connection, phoneNumberUnlisted);
-    }
+//    public Boolean getPhoneNumberUnlisted(final Connection connection) throws SQLException {
+//        return keyValueStore.getEntry(connection, phoneNumberUnlisted);
+//    }
 
     public void setPhoneNumberUnlisted(final boolean value) {
         if (keyValueStore.storeEntry(phoneNumberUnlisted, value)) {
@@ -129,19 +109,13 @@ public class ConfigurationStore {
         }
     }
 
-    public void setPhoneNumberUnlisted(final Connection connection, final boolean value) throws SQLException {
-        if (keyValueStore.storeEntry(connection, phoneNumberUnlisted, value)) {
-            recipientStore.rotateSelfStorageId(connection);
-        }
-    }
-
     public PhoneNumberSharingMode getPhoneNumberSharingMode() {
         return keyValueStore.getEntry(phoneNumberSharingMode);
     }
 
-    public PhoneNumberSharingMode getPhoneNumberSharingMode(final Connection connection) throws SQLException {
-        return keyValueStore.getEntry(connection, phoneNumberSharingMode);
-    }
+//    public PhoneNumberSharingMode getPhoneNumberSharingMode(final Connection connection) throws SQLException {
+//        return keyValueStore.getEntry(connection, phoneNumberSharingMode);
+//    }
 
     public void setPhoneNumberSharingMode(final PhoneNumberSharingMode value) {
         if (keyValueStore.storeEntry(phoneNumberSharingMode, value)) {
@@ -149,32 +123,17 @@ public class ConfigurationStore {
         }
     }
 
-    public void setPhoneNumberSharingMode(
-            final Connection connection,
-            final PhoneNumberSharingMode value
-    ) throws SQLException {
-        if (keyValueStore.storeEntry(connection, phoneNumberSharingMode, value)) {
-            recipientStore.rotateSelfStorageId(connection);
-        }
-    }
-
     public String getUsernameLinkColor() {
         return keyValueStore.getEntry(usernameLinkColor);
     }
 
-    public String getUsernameLinkColor(final Connection connection) throws SQLException {
-        return keyValueStore.getEntry(connection, usernameLinkColor);
-    }
+//    public String getUsernameLinkColor(final Connection connection) throws SQLException {
+//        return keyValueStore.getEntry(connection, usernameLinkColor);
+//    }
 
     public void setUsernameLinkColor(final String color) {
         if (keyValueStore.storeEntry(usernameLinkColor, color)) {
             recipientStore.rotateSelfStorageId();
-        }
-    }
-
-    public void setUsernameLinkColor(final Connection connection, final String color) throws SQLException {
-        if (keyValueStore.storeEntry(connection, usernameLinkColor, color)) {
-            recipientStore.rotateSelfStorageId(connection);
         }
     }
 }

@@ -51,7 +51,6 @@ public final class StorageSyncModels {
     }
 
     public static AccountRecord localToRemoteRecord(
-            final Connection connection,
             ConfigurationStore configStore,
             Recipient self,
             UsernameLinkComponents usernameLinkComponents
@@ -65,18 +64,18 @@ public final class StorageSyncModels {
                     .familyName(emptyIfNull(self.getProfile().getFamilyName()))
                     .avatarUrlPath(emptyIfNull(self.getProfile().getAvatarUrlPath()));
         }
-        builder.typingIndicators(Optional.ofNullable(configStore.getTypingIndicators(connection)).orElse(true))
-                .readReceipts(Optional.ofNullable(configStore.getReadReceipts(connection)).orElse(true))
-                .sealedSenderIndicators(Optional.ofNullable(configStore.getUnidentifiedDeliveryIndicators(connection))
+        builder.typingIndicators(Optional.ofNullable(configStore.getTypingIndicators()).orElse(true))
+                .readReceipts(Optional.ofNullable(configStore.getReadReceipts()).orElse(true))
+                .sealedSenderIndicators(Optional.ofNullable(configStore.getUnidentifiedDeliveryIndicators())
                         .orElse(true))
-                .linkPreviews(Optional.ofNullable(configStore.getLinkPreviews(connection)).orElse(true))
-                .unlistedPhoneNumber(Optional.ofNullable(configStore.getPhoneNumberUnlisted(connection)).orElse(false))
-                .phoneNumberSharingMode(Optional.ofNullable(configStore.getPhoneNumberSharingMode(connection))
+                .linkPreviews(Optional.ofNullable(configStore.getLinkPreviews()).orElse(true))
+                .unlistedPhoneNumber(Optional.ofNullable(configStore.getPhoneNumberUnlisted()).orElse(false))
+                .phoneNumberSharingMode(Optional.ofNullable(configStore.getPhoneNumberSharingMode())
                         .map(StorageSyncModels::localToRemote)
                         .orElse(AccountRecord.PhoneNumberSharingMode.UNKNOWN))
                 .username(self.getAddress().username().orElse(""));
         if (usernameLinkComponents != null) {
-            final var linkColor = configStore.getUsernameLinkColor(connection);
+            final var linkColor = configStore.getUsernameLinkColor();
             builder.usernameLink(new UsernameLink.Builder().entropy(ByteString.of(usernameLinkComponents.getEntropy()))
                     .serverId(UuidUtil.toByteString(usernameLinkComponents.getServerId()))
                     .color(linkColor == null ? UsernameLink.Color.UNKNOWN : UsernameLink.Color.valueOf(linkColor))
