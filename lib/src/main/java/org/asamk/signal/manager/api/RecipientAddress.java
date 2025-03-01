@@ -1,5 +1,6 @@
 package org.asamk.signal.manager.api;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.whispersystems.signalservice.api.util.UuidUtil;
 
 import java.util.Optional;
@@ -43,6 +44,7 @@ public record RecipientAddress(
         return aci.map(UUID::fromString);
     }
 
+    @JsonIgnore
     public String getIdentifier() {
         if (aci.isPresent()) {
             return aci.get();
@@ -57,6 +59,7 @@ public record RecipientAddress(
         }
     }
 
+    @JsonIgnore
     public String getLegacyIdentifier() {
         if (number.isPresent()) {
             return number.get();

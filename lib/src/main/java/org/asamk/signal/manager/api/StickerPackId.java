@@ -1,7 +1,10 @@
 package org.asamk.signal.manager.api;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 import org.whispersystems.signalservice.internal.util.Hex;
 
+import java.io.IOException;
 import java.util.Arrays;
 
 public class StickerPackId {
@@ -38,5 +41,19 @@ public class StickerPackId {
     @Override
     public String toString() {
         return "StickerPackId{" + Hex.toStringCondensed(id) + '}';
+    }
+
+    @JsonValue
+    String toHexString() {
+        return Hex.toStringCondensed(id);
+    }
+
+    @JsonCreator
+    public static StickerPackId fromHexString(String hexString) {
+        try {
+            return deserialize(Hex.fromStringCondensed(hexString));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
