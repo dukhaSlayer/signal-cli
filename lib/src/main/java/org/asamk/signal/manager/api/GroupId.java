@@ -1,5 +1,8 @@
 package org.asamk.signal.manager.api;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
+
 import java.util.Arrays;
 import java.util.Base64;
 
@@ -25,6 +28,7 @@ public abstract sealed class GroupId permits GroupIdV1, GroupIdV2 {
         throw new AssertionError("Invalid group id of size " + id.length);
     }
 
+    @JsonCreator
     public static GroupId fromBase64(String id) throws GroupIdFormatException {
         try {
             return unknownVersion(java.util.Base64.getDecoder().decode(id));
@@ -41,6 +45,7 @@ public abstract sealed class GroupId permits GroupIdV1, GroupIdV2 {
         return id;
     }
 
+    @JsonValue
     public String toBase64() {
         return Base64.getEncoder().encodeToString(id);
     }
