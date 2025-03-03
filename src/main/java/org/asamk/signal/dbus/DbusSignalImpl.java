@@ -142,6 +142,11 @@ public class DbusSignalImpl implements Signal, AutoCloseable {
     }
 
     @Override
+    public RecipientAddress getSelfRecipientAddress() {
+        return m.getSelfRecipientAddress();
+    }
+
+    @Override
     public void subscribeReceive() {
         if (dbusMessageHandler == null) {
             dbusMessageHandler = new DbusReceiveMessageHandler(connection, objectPath);
