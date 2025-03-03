@@ -7,9 +7,16 @@ import org.slf4j.Logger;
 import org.sqlite.SQLiteConfig;
 
 import java.io.File;
+import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public abstract class Database implements AutoCloseable {
 
