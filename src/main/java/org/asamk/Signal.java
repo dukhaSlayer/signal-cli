@@ -1,5 +1,6 @@
 package org.asamk;
 
+import org.asamk.signal.manager.api.RecipientAddress;
 import org.freedesktop.dbus.DBusPath;
 import org.freedesktop.dbus.Struct;
 import org.freedesktop.dbus.annotations.DBusProperty;
@@ -21,6 +22,8 @@ import java.util.Map;
 public interface Signal extends DBusInterface {
 
     String getSelfNumber();
+
+    RecipientAddress getSelfRecipientAddress();
 
     void subscribeReceive();
 

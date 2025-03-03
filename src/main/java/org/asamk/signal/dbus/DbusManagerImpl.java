@@ -109,6 +109,11 @@ public class DbusManagerImpl implements Manager {
     }
 
     @Override
+    public RecipientAddress getSelfRecipientAddress() {
+        return signal.getSelfRecipientAddress();
+    }
+
+    @Override
     public Map<String, UserStatus> getUserStatus(final Set<String> numbers) throws IOException {
         final var numbersList = new ArrayList<>(numbers);
         final var registered = signal.isRegistered(numbersList);
