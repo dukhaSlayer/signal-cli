@@ -237,6 +237,12 @@ public class ManagerImpl implements Manager {
         return account.getNumber();
     }
 
+    @Override
+    public org.asamk.signal.manager.api.RecipientAddress getSelfRecipientAddress() {
+        var a = account.getSelfRecipientAddress();
+        return new org.asamk.signal.manager.api.RecipientAddress(a.aci().map(aci -> aci.getRawUuid()).get());
+    }
+
     public void checkAccountState() throws IOException {
         context.getAccountHelper().checkAccountState();
         final var lastRecipientsRefresh = account.getLastRecipientsRefresh();
@@ -814,9 +820,11 @@ public class ManagerImpl implements Manager {
                 quotedAttachments.add(quotedAttachment);
             }
             messageBuilder.withQuote(new SignalServiceDataMessage.Quote(quote.timestamp(),
-                    context.getRecipientHelper()
-                            .resolveSignalServiceAddress(context.getRecipientHelper().resolveRecipient(quote.author()))
-                            .getServiceId(),
+                    quote.author() == null
+                        ? null
+                        : context.getRecipientHelper()
+                                .resolveSignalServiceAddress(context.getRecipientHelper().resolveRecipient(quote.author()))
+                                .getServiceId(),
                     quote.message(),
                     quotedAttachments,
                     resolveMentions(quote.mentions()),
@@ -1226,6 +1234,7 @@ public class ManagerImpl implements Manager {
     private static final AtomicInteger threadNumber = new AtomicInteger(0);
 
     private void startReceiveThreadIfRequired() {
+        logger.debug("startReceiveThreadIfRequired()");
         if (receiveThread != null || isReceivingSynchronous) {
             return;
         }
@@ -1237,7 +1246,7 @@ public class ManagerImpl implements Manager {
                 receiveThread = null;
 
                 // Check if in the meantime another handler has been registered
-                if (!messageHandlers.isEmpty()) {
+                if (!messageHandlers.isEmpty() && !context.getReceiveHelper().isStopping()) {
                     logger.debug("Another handler has been registered, starting receive thread again");
                     startReceiveThreadIfRequired();
                 }
@@ -1279,9 +1288,10 @@ public class ManagerImpl implements Manager {
             thread.interrupt();
         }
         try {
-            thread.join();
+            thread.join(20000);
         } catch (InterruptedException ignored) {
         }
+        logger.info("stopReceiveThread: thread stopped");
     }
 
     @Override
@@ -1469,8 +1479,10 @@ public class ManagerImpl implements Manager {
             }
             serviceId = address.serviceId().get();
         } catch (UnregisteredRecipientException e) {
+            logger.warn("getIdentities failed", e);
             return List.of();
         }
+        logger.debug("getIdentities got serviceId={}", serviceId);
         final var identity = account.getIdentityKeyStore().getIdentityInfo(serviceId);
         return identity == null ? List.of() : List.of(toIdentity(identity));
     }
@@ -1581,15 +1593,19 @@ public class ManagerImpl implements Manager {
 
     @Override
     public void close() {
+        logger.info("Closing ManagerImpl");
         Thread thread;
+        // DF: this is still error-prone, but better than before: we won't lose messages during close now.
         synchronized (messageHandlers) {
-            weakHandlers.clear();
-            messageHandlers.clear();
             thread = receiveThread;
             receiveThread = null;
         }
         if (thread != null) {
             stopReceiveThread(thread);
+        }
+        synchronized (messageHandlers) {
+            weakHandlers.clear();
+            messageHandlers.clear();
         }
         context.close();
         executor.close();
@@ -1608,5 +1624,7 @@ public class ManagerImpl implements Manager {
         }
 
         account = null;
+
+        logger.info("Closing ManagerImpl: Done");
     }
 }

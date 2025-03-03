@@ -32,6 +32,7 @@ import org.asamk.signal.manager.api.PinLockedException;
 import org.asamk.signal.manager.api.RateLimitException;
 import org.asamk.signal.manager.api.ReceiveConfig;
 import org.asamk.signal.manager.api.Recipient;
+import org.asamk.signal.manager.api.RecipientAddress;
 import org.asamk.signal.manager.api.RecipientIdentifier;
 import org.asamk.signal.manager.api.SendGroupMessageResults;
 import org.asamk.signal.manager.api.SendMessageResults;
@@ -84,6 +85,8 @@ public interface Manager extends Closeable {
     }
 
     String getSelfNumber();
+
+    RecipientAddress getSelfRecipientAddress();
 
     /**
      * This is used for checking a set of phone numbers for registration on Signal

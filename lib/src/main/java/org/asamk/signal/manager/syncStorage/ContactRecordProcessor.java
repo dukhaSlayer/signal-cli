@@ -6,7 +6,9 @@ import org.asamk.signal.manager.internal.JobExecutor;
 import org.asamk.signal.manager.jobs.DownloadProfileJob;
 import org.asamk.signal.manager.jobs.RefreshRecipientsJob;
 import org.asamk.signal.manager.storage.SignalAccount;
+import org.asamk.signal.manager.storage.identities.IdentityKeyStore;
 import org.asamk.signal.manager.storage.recipients.RecipientAddress;
+import org.asamk.signal.manager.storage.recipients.RecipientStore;
 import org.asamk.signal.manager.util.KeyUtils;
 import org.signal.libsignal.protocol.IdentityKey;
 import org.signal.libsignal.protocol.InvalidKeyException;
@@ -43,16 +45,18 @@ public class ContactRecordProcessor extends DefaultStorageRecordProcessor<Signal
     private final PNI selfPni;
     private final String selfNumber;
     private final SignalAccount account;
-    private final Connection connection;
     private final JobExecutor jobExecutor;
+    private final RecipientStore recipientStore;
+    private final IdentityKeyStore identityKeyStore;
 
     public ContactRecordProcessor(SignalAccount account, Connection connection, final JobExecutor jobExecutor) {
         this.account = account;
-        this.connection = connection;
         this.jobExecutor = jobExecutor;
         this.selfAci = account.getAci();
         this.selfPni = account.getPni();
         this.selfNumber = account.getNumber();
+        this.recipientStore = account.getRecipientStore().withConnection(connection);
+        this.identityKeyStore = account.getIdentityKeyStore().withConnection(connection);
     }
 
     /**
@@ -88,12 +92,12 @@ public class ContactRecordProcessor extends DefaultStorageRecordProcessor<Signal
     @Override
     protected Optional<SignalContactRecord> getMatching(SignalContactRecord remote) throws SQLException {
         final var address = getRecipientAddress(remote.getProto());
-        final var recipientId = account.getRecipientStore().resolveRecipient(connection, address);
-        final var recipient = account.getRecipientStore().getRecipient(connection, recipientId);
+        final var recipientId = recipientStore.resolveRecipient(address);
+        final var recipient = recipientStore.getRecipient(recipientId);
 
         final var identifier = recipient.getAddress().getIdentifier();
-        final var identity = account.getIdentityKeyStore().getIdentityInfo(connection, identifier);
-        final var storageId = account.getRecipientStore().getStorageId(connection, recipientId);
+        final var identity = identityKeyStore.getIdentityInfo(identifier);
+        final var storageId = recipientStore.getStorageId(recipientId);
 
         return Optional.of(new SignalContactRecord(storageId,
                 StorageSyncModels.localToRemoteRecord(recipient, identity)));
@@ -222,8 +226,8 @@ public class ContactRecordProcessor extends DefaultStorageRecordProcessor<Signal
         final var contactRecord = update.newRecord();
         final var contactProto = contactRecord.getProto();
         final var address = getRecipientAddress(contactProto);
-        final var recipientId = account.getRecipientStore().resolveRecipientTrusted(connection, address);
-        final var recipient = account.getRecipientStore().getRecipient(connection, recipientId);
+        final var recipientId = recipientStore.resolveRecipientTrusted(address);
+        final var recipient = recipientStore.getRecipient(recipientId);
 
         final var contact = recipient.getContact();
         final var blocked = contact != null && contact.isBlocked();
@@ -277,7 +281,7 @@ public class ContactRecordProcessor extends DefaultStorageRecordProcessor<Signal
                     .withUnregisteredTimestamp(contactProto.unregisteredAtTimestamp == 0
                             ? null
                             : contactProto.unregisteredAtTimestamp);
-            account.getRecipientStore().storeContact(connection, recipientId, newContact.build());
+            recipientStore.storeContact(recipientId, newContact.build());
         }
 
         final var profile = recipient.getProfile();
@@ -289,13 +293,13 @@ public class ContactRecordProcessor extends DefaultStorageRecordProcessor<Signal
             final var newProfile = profileBuilder.withGivenName(nullIfEmpty(contactProto.givenName))
                     .withFamilyName(nullIfEmpty(contactProto.familyName))
                     .build();
-            account.getRecipientStore().storeProfile(connection, recipientId, newProfile);
+            recipientStore.storeProfile(recipientId, newProfile);
         }
         if (contactProto.profileKey.size() > 0) {
             try {
                 logger.trace("Storing profile key {}", recipientId);
                 final var profileKey = new ProfileKey(contactProto.profileKey.toByteArray());
-                account.getRecipientStore().storeProfileKey(connection, recipientId, profileKey);
+                recipientStore.storeProfileKey(recipientId, profileKey);
             } catch (InvalidInputException e) {
                 logger.warn("Received invalid contact profile key from storage");
             }
@@ -304,19 +308,17 @@ public class ContactRecordProcessor extends DefaultStorageRecordProcessor<Signal
             try {
                 logger.trace("Storing identity key {}", recipientId);
                 final var identityKey = new IdentityKey(contactProto.identityKey.toByteArray());
-                account.getIdentityKeyStore().saveIdentity(connection, address.aci().get(), identityKey);
+                identityKeyStore.saveIdentity(address.aci().get(), identityKey);
 
                 final var trustLevel = StorageSyncModels.remoteToLocal(contactProto.identityState);
                 if (trustLevel != null) {
-                    account.getIdentityKeyStore()
-                            .setIdentityTrustLevel(connection, address.aci().get(), identityKey, trustLevel);
+                    identityKeyStore.setIdentityTrustLevel(address.aci().get(), identityKey, trustLevel);
                 }
             } catch (InvalidKeyException e) {
                 logger.warn("Received invalid contact identity key from storage");
             }
         }
-        account.getRecipientStore()
-                .storeStorageRecord(connection, recipientId, contactRecord.getId(), contactProto.encode());
+        recipientStore.storeStorageRecord(recipientId, contactRecord.getId(), contactProto.encode());
     }
 
     private static RecipientAddress getRecipientAddress(final ContactRecord contactRecord) {

@@ -50,11 +50,11 @@ public class AccountRecordProcessor extends DefaultStorageRecordProcessor<Signal
         this.connection = connection;
         this.jobExecutor = jobExecutor;
         final var selfRecipientId = account.getSelfRecipientId();
-        final var recipient = account.getRecipientStore().getRecipient(connection, selfRecipientId);
-        final var storageId = account.getRecipientStore().getSelfStorageId(connection);
+        final var recipientStore = account.getRecipientStore().withConnection(connection);
+        final var recipient = recipientStore.getRecipient(selfRecipientId);
+        final var storageId = recipientStore.getSelfStorageId();
         this.localAccountRecord = new SignalAccountRecord(storageId,
-                StorageSyncModels.localToRemoteRecord(connection,
-                        account.getConfigurationStore(),
+                StorageSyncModels.localToRemoteRecord(account.getConfigurationStore().withConnection(connection),
                         recipient,
                         account.getUsernameLink()));
     }
@@ -183,22 +183,22 @@ public class AccountRecordProcessor extends DefaultStorageRecordProcessor<Signal
             jobExecutor.enqueueJob(new CheckWhoAmIJob());
         }
 
-        account.getConfigurationStore().setReadReceipts(connection, accountProto.readReceipts);
-        account.getConfigurationStore().setTypingIndicators(connection, accountProto.typingIndicators);
-        account.getConfigurationStore()
-                .setUnidentifiedDeliveryIndicators(connection, accountProto.sealedSenderIndicators);
-        account.getConfigurationStore().setLinkPreviews(connection, accountProto.linkPreviews);
-        account.getConfigurationStore()
-                .setPhoneNumberSharingMode(connection,
-                        StorageSyncModels.remoteToLocal(accountProto.phoneNumberSharingMode));
-        account.getConfigurationStore().setPhoneNumberUnlisted(connection, accountProto.unlistedPhoneNumber);
+        final var configStore = account.getConfigurationStore().withConnection(connection);
+        final var recipientStore = account.getRecipientStore().withConnection(connection);
+
+        configStore.setReadReceipts(accountProto.readReceipts);
+        configStore.setTypingIndicators(accountProto.typingIndicators);
+        configStore.setUnidentifiedDeliveryIndicators(accountProto.sealedSenderIndicators);
+        configStore.setLinkPreviews(accountProto.linkPreviews);
+        configStore.setPhoneNumberSharingMode(StorageSyncModels.remoteToLocal(accountProto.phoneNumberSharingMode));
+        configStore.setPhoneNumberUnlisted(accountProto.unlistedPhoneNumber);
 
         account.setUsername(!accountProto.username.isEmpty() ? accountProto.username : null);
         if (accountProto.usernameLink != null) {
             final var usernameLink = accountProto.usernameLink;
             account.setUsernameLink(new UsernameLinkComponents(usernameLink.entropy.toByteArray(),
                     UuidUtil.parseOrThrow(usernameLink.serverId.toByteArray())));
-            account.getConfigurationStore().setUsernameLinkColor(connection, usernameLink.color.name());
+            configStore.setUsernameLinkColor(usernameLink.color.name());
         }
 
         if (accountProto.profileKey.size() > 0) {
@@ -216,13 +216,12 @@ public class AccountRecordProcessor extends DefaultStorageRecordProcessor<Signal
             }
         }
 
-        final var profile = account.getRecipientStore().getProfile(connection, account.getSelfRecipientId());
+        final var profile = recipientStore.getProfile(account.getSelfRecipientId());
         final var builder = profile == null ? Profile.newBuilder() : Profile.newBuilder(profile);
         builder.withGivenName(accountProto.givenName);
         builder.withFamilyName(accountProto.familyName);
-        account.getRecipientStore().storeProfile(connection, account.getSelfRecipientId(), builder.build());
-        account.getRecipientStore()
-                .storeStorageRecord(connection,
+        recipientStore.storeProfile(account.getSelfRecipientId(), builder.build());
+        recipientStore.storeStorageRecord(
                         account.getSelfRecipientId(),
                         accountRecord.getId(),
                         accountProto.encode());

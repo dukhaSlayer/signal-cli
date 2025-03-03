@@ -21,8 +21,8 @@ import org.whispersystems.signalservice.api.websocket.WebSocketUnavailableExcept
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,8 +42,8 @@ public class ReceiveHelper {
 
     private ReceiveConfig receiveConfig = new ReceiveConfig(false, false, false);
     private boolean hasCaughtUpWithOldMessages = false;
-    private boolean isWaitingForMessage = false;
-    private boolean shouldStop = false;
+    private volatile boolean isWaitingForMessage = false;
+    private volatile boolean shouldStop = false;
     private Callable authenticationFailureListener;
     private Callable caughtUpWithOldMessagesListener;
 
@@ -71,6 +71,10 @@ public class ReceiveHelper {
         return isWaitingForMessage;
     }
 
+    public boolean isStopping() {
+        return shouldStop;
+    }
+
     public void receiveMessagesContinuously(Manager.ReceiveMessageHandler handler) {
         while (!shouldStop) {
             try {
@@ -92,7 +96,7 @@ public class ReceiveHelper {
         hasCaughtUpWithOldMessages = false;
 
         // Use a Map here because java Set doesn't have a get method ...
-        Map<HandleAction, HandleAction> queuedActions = new HashMap<>();
+        Map<HandleAction, HandleAction> queuedActions = new LinkedHashMap<>();
 
         final var signalWebSocket = dependencies.getSignalWebSocket();
         final var webSocketStateDisposable = Observable.merge(signalWebSocket.getUnidentifiedWebSocketState(),
@@ -111,7 +115,6 @@ public class ReceiveHelper {
             queuedActions.clear();
             signalWebSocket.disconnect();
             webSocketStateDisposable.dispose();
-            shouldStop = false;
         }
     }
 
@@ -210,6 +213,8 @@ public class ReceiveHelper {
             } catch (Exception e) {
                 logger.error("Unknown error when receiving messages", e);
                 continue;
+            } finally {
+                isWaitingForMessage = false;
             }
 
             try {
@@ -255,7 +260,7 @@ public class ReceiveHelper {
     }
 
     private void retryFailedReceivedMessages(Manager.ReceiveMessageHandler handler) {
-        Set<HandleAction> queuedActions = new HashSet<>();
+        Set<HandleAction> queuedActions = new LinkedHashSet<>();
         for (var cachedMessage : account.getMessageCache().getCachedMessages()) {
             var actions = retryFailedReceivedMessage(handler, cachedMessage);
             if (actions != null) {

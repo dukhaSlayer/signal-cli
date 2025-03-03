@@ -211,9 +211,8 @@ public class StorageHelper {
                 }
 
                 if (!idDifference.localOnlyIds().isEmpty()) {
-                    final var updated = account.getRecipientStore()
-                            .removeStorageIdsFromLocalOnlyUnregisteredRecipients(connection,
-                                    idDifference.localOnlyIds());
+                    final var updated = account.getRecipientStore().withConnection(connection)
+                            .removeStorageIdsFromLocalOnlyUnregisteredRecipients(idDifference.localOnlyIds());
 
                     if (updated > 0) {
                         logger.warn(
@@ -359,22 +358,24 @@ public class StorageHelper {
         try (final var connection = account.getAccountDatabase().getConnection()) {
             connection.setAutoCommit(false);
 
-            final var recipientIds = account.getRecipientStore().getRecipientIds(connection);
+            var recipientStore = account.getRecipientStore().withConnection(connection);
+            var identityStore = account.getIdentityKeyStore().withConnection(connection);
+
+            final var recipientIds = recipientStore.getRecipientIds();
             newContactStorageIds = generateContactStorageIds(recipientIds);
             for (final var recipientId : recipientIds) {
                 final var storageId = newContactStorageIds.get(recipientId);
                 if (storageId.getType() == ManifestRecord.Identifier.Type.ACCOUNT.getValue()) {
-                    final var recipient = account.getRecipientStore().getRecipient(connection, recipientId);
-                    final var accountRecord = StorageSyncModels.localToRemoteRecord(connection,
-                            account.getConfigurationStore(),
+                    final var recipient = recipientStore.getRecipient(recipientId);
+                    final var accountRecord = StorageSyncModels.localToRemoteRecord(account.getConfigurationStore().withConnection(connection),
                             recipient,
                             account.getUsernameLink());
                     newStorageRecords.add(new SignalStorageRecord(storageId,
                             new StorageRecord.Builder().account(accountRecord).build()));
                 } else {
-                    final var recipient = account.getRecipientStore().getRecipient(connection, recipientId);
+                    final var recipient = recipientStore.getRecipient(recipientId);
                     final var address = recipient.getAddress().getIdentifier();
-                    final var identity = account.getIdentityKeyStore().getIdentityInfo(connection, address);
+                    final var identity = identityStore.getIdentityInfo(address);
                     final var record = StorageSyncModels.localToRemoteRecord(recipient, identity);
                     newStorageRecords.add(new SignalStorageRecord(storageId,
                             new StorageRecord.Builder().contact(record).build()));
@@ -449,7 +450,7 @@ public class StorageHelper {
 
         try (final var connection = account.getAccountDatabase().getConnection()) {
             connection.setAutoCommit(false);
-            account.getRecipientStore().updateStorageIds(connection, newContactStorageIds);
+            account.getRecipientStore().withConnection(connection).updateStorageIds(newContactStorageIds);
             account.getGroupStore().updateStorageIds(connection, newGroupV1StorageIds, newGroupV2StorageIds);
 
             // delete all unknown storage ids
@@ -521,8 +522,8 @@ public class StorageHelper {
         final var storageIds = new ArrayList<StorageId>();
         storageIds.addAll(account.getUnknownStorageIdStore().getUnknownStorageIds(connection));
         storageIds.addAll(account.getGroupStore().getStorageIds(connection));
-        storageIds.addAll(account.getRecipientStore().getStorageIds(connection));
-        storageIds.add(account.getRecipientStore().getSelfStorageId(connection));
+        storageIds.addAll(account.getRecipientStore().withConnection(connection).getStorageIds());
+        storageIds.add(account.getRecipientStore().withConnection(connection).getSelfStorageId());
         return storageIds;
     }
 
@@ -542,11 +543,13 @@ public class StorageHelper {
             Connection connection,
             StorageId storageId
     ) throws SQLException {
+        var rs =account.getRecipientStore().withConnection(connection);
+        var is = account.getIdentityKeyStore().withConnection(connection);
         return switch (ManifestRecord.Identifier.Type.fromValue(storageId.getType())) {
             case ManifestRecord.Identifier.Type.CONTACT -> {
-                final var recipient = account.getRecipientStore().getRecipient(connection, storageId);
+                final var recipient = rs.getRecipient(storageId);
                 final var address = recipient.getAddress().getIdentifier();
-                final var identity = account.getIdentityKeyStore().getIdentityInfo(connection, address);
+                final var identity = is.getIdentityInfo(address);
                 final var record = StorageSyncModels.localToRemoteRecord(recipient, identity);
                 yield new SignalStorageRecord(storageId, new StorageRecord.Builder().contact(record).build());
             }
@@ -561,11 +564,9 @@ public class StorageHelper {
                 yield new SignalStorageRecord(storageId, new StorageRecord.Builder().groupV2(record).build());
             }
             case ManifestRecord.Identifier.Type.ACCOUNT -> {
-                final var selfRecipient = account.getRecipientStore()
-                        .getRecipient(connection, account.getSelfRecipientId());
+                final var selfRecipient = rs.getRecipient(account.getSelfRecipientId());
 
-                final var record = StorageSyncModels.localToRemoteRecord(connection,
-                        account.getConfigurationStore(),
+                final var record = StorageSyncModels.localToRemoteRecord(account.getConfigurationStore().withConnection(connection),
                         selfRecipient,
                         account.getUsernameLink());
                 yield new SignalStorageRecord(storageId, new StorageRecord.Builder().account(record).build());

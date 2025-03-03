@@ -51,9 +51,21 @@ public class MergeRecipientHelper {
             return new Pair<>(store.addNewRecipient(address), List.of());
         }
 
+        // DS: if there's a recipient with both aci and pni - we want it first, if no - try other options (aci only, pni only)
+        // See https://github.com/AsamK/signal-cli/issues/1668
         var resultingRecipient = recipients.stream()
+                .filter(r ->
+                    r.address().aci().isPresent() && r.address().aci().equals(address.aci())
+                    && r.address().pni().isPresent() && r.address().pni().equals(address.pni())
+                )
+                .findFirst();
+
+        if (resultingRecipient.isEmpty()) {
+            resultingRecipient = recipients.stream()
                 .filter(r -> r.address().aci().isPresent() && r.address().aci().equals(address.aci()))
                 .findFirst();
+        }
+
         if (resultingRecipient.isEmpty() && address.pni().isPresent()) {
             resultingRecipient = recipients.stream().filter(r -> r.address().pni().equals(address.pni())).findFirst();
         }

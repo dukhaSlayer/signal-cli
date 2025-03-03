@@ -6,6 +6,7 @@ import org.asamk.signal.manager.api.PhoneNumberSharingMode;
 import org.asamk.signal.manager.api.Profile;
 import org.asamk.signal.manager.api.UnregisteredRecipientException;
 import org.asamk.signal.manager.storage.Database;
+import org.asamk.signal.manager.storage.StoreBase;
 import org.asamk.signal.manager.storage.Utils;
 import org.asamk.signal.manager.storage.contacts.ContactsStore;
 import org.asamk.signal.manager.storage.profiles.ProfileStore;
@@ -37,7 +38,7 @@ import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-public class RecipientStore implements RecipientIdCreator, RecipientResolver, RecipientTrustedResolver, ContactsStore, ProfileStore {
+public class RecipientStore extends StoreBase implements RecipientIdCreator, RecipientResolver, RecipientTrustedResolver, ContactsStore, ProfileStore {
 
     private static final Logger logger = LoggerFactory.getLogger(RecipientStore.class);
     private static final String TABLE_RECIPIENT = "recipient";
@@ -46,7 +47,6 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
     private final RecipientMergeHandler recipientMergeHandler;
     private final SelfAddressProvider selfAddressProvider;
     private final SelfProfileKeyProvider selfProfileKeyProvider;
-    private final Database database;
 
     private final Map<Long, Long> recipientsMerged = new HashMap<>();
 
@@ -108,15 +108,31 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
             final SelfProfileKeyProvider selfProfileKeyProvider,
             final Database database
     ) {
+        super(database, null);
         this.recipientMergeHandler = recipientMergeHandler;
         this.selfAddressProvider = selfAddressProvider;
         this.selfProfileKeyProvider = selfProfileKeyProvider;
-        this.database = database;
+    }
+
+    public RecipientStore(
+        final RecipientMergeHandler recipientMergeHandler,
+        final SelfAddressProvider selfAddressProvider,
+        final SelfProfileKeyProvider selfProfileKeyProvider,
+        final Connection connection
+    ) {
+        super(null, connection);
+        this.recipientMergeHandler = recipientMergeHandler;
+        this.selfAddressProvider = selfAddressProvider;
+        this.selfProfileKeyProvider = selfProfileKeyProvider;
+    }
+
+    public RecipientStore withConnection(Connection connection) {
+        return new RecipientStore(recipientMergeHandler, selfAddressProvider, selfProfileKeyProvider, connection);
     }
 
     public RecipientAddress resolveRecipientAddress(RecipientId recipientId) {
-        try (final var connection = database.getConnection()) {
-            return resolveRecipientAddress(connection, recipientId);
+        try (final var connection = getConnectionImpl()) {
+            return resolveRecipientAddress(connection.get(), recipientId);
         } catch (SQLException e) {
             throw new RuntimeException("Failed read from recipient store", e);
         }
@@ -130,8 +146,8 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
                 WHERE r.blocked = FALSE AND r.profile_sharing = TRUE
                 """
         ).formatted(TABLE_RECIPIENT);
-        try (final var connection = database.getConnection()) {
-            try (final var statement = connection.prepareStatement(sql)) {
+        try (final var connection = getConnectionImpl()) {
+            try (final var statement = connection.get().prepareStatement(sql)) {
                 try (var result = Utils.executeQueryForStream(statement, this::getRecipientIdFromResultSet)) {
                     return result.toList();
                 }
@@ -150,8 +166,8 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
                 WHERE r._id = ?
                 """
         ).formatted(TABLE_RECIPIENT);
-        try (final var connection = database.getConnection()) {
-            try (final var statement = connection.prepareStatement(sql)) {
+        try (final var connection = getConnectionImpl()) {
+            try (final var statement = connection.get().prepareStatement(sql)) {
                 statement.setLong(1, rawRecipientId);
                 return Utils.executeQueryForOptional(statement, this::getRecipientIdFromResultSet).orElse(null);
             }
@@ -172,10 +188,10 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
 
     private RecipientId resolveRecipientByNumber(final String number) {
         final RecipientId recipientId;
-        try (final var connection = database.getConnection()) {
-            connection.setAutoCommit(false);
-            recipientId = resolveRecipientLocked(connection, number);
-            connection.commit();
+        try (final var connection = getConnectionImpl()) {
+            connection.get().setAutoCommit(false);
+            recipientId = resolveRecipientLocked(connection.get(), number);
+            connection.get().commit();
         } catch (SQLException e) {
             throw new RuntimeException("Failed read recipient store", e);
         }
@@ -184,14 +200,14 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
 
     @Override
     public RecipientId resolveRecipient(final ServiceId serviceId) {
-        try (final var connection = database.getConnection()) {
-            connection.setAutoCommit(false);
+        try (final var connection = getConnectionImpl()) {
+            connection.get().setAutoCommit(false);
             final var recipientWithAddress = recipientAddressCache.get(serviceId);
             if (recipientWithAddress != null) {
                 return recipientWithAddress.id();
             }
-            final var recipientId = resolveRecipientLocked(connection, serviceId);
-            connection.commit();
+            final var recipientId = resolveRecipientLocked(connection.get(), serviceId);
+            connection.get().commit();
             return recipientId;
         } catch (SQLException e) {
             throw new RuntimeException("Failed read recipient store", e);
@@ -212,8 +228,8 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
             Supplier<ServiceId> serviceIdSupplier
     ) throws UnregisteredRecipientException {
         final Optional<RecipientWithAddress> byNumber;
-        try (final var connection = database.getConnection()) {
-            byNumber = findByNumber(connection, number);
+        try (final var connection = getConnectionImpl()) {
+            byNumber = findByNumber(connection.get(), number);
         } catch (SQLException e) {
             throw new RuntimeException("Failed read from recipient store", e);
         }
@@ -230,8 +246,8 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
 
     public Optional<RecipientId> resolveRecipientByNumberOptional(final String number) {
         final Optional<RecipientWithAddress> byNumber;
-        try (final var connection = database.getConnection()) {
-            byNumber = findByNumber(connection, number);
+        try (final var connection = getConnectionImpl()) {
+            byNumber = findByNumber(connection.get(), number);
         } catch (SQLException e) {
             throw new RuntimeException("Failed read from recipient store", e);
         }
@@ -243,8 +259,8 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
             Supplier<ACI> aciSupplier
     ) throws UnregisteredRecipientException {
         final Optional<RecipientWithAddress> byUsername;
-        try (final var connection = database.getConnection()) {
-            byUsername = findByUsername(connection, username);
+        try (final var connection = getConnectionImpl()) {
+            byUsername = findByUsername(connection.get(), username);
         } catch (SQLException e) {
             throw new RuntimeException("Failed read from recipient store", e);
         }
@@ -264,17 +280,17 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
 
     public RecipientId resolveRecipient(RecipientAddress address) {
         final RecipientId recipientId;
-        try (final var connection = database.getConnection()) {
-            connection.setAutoCommit(false);
-            recipientId = resolveRecipientLocked(connection, address);
-            connection.commit();
+        try (final var connection = getConnectionImpl()) {
+            connection.get().setAutoCommit(false);
+            recipientId = resolveRecipientLocked(connection.get(), address);
+            connection.get().commit();
         } catch (SQLException e) {
             throw new RuntimeException("Failed read recipient store", e);
         }
         return recipientId;
     }
 
-    public RecipientId resolveRecipient(Connection connection, RecipientAddress address) throws SQLException {
+    private RecipientId resolveRecipient(Connection connection, RecipientAddress address) throws SQLException {
         return resolveRecipientLocked(connection, address);
     }
 
@@ -288,7 +304,7 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
         return resolveRecipientTrusted(address, false);
     }
 
-    public RecipientId resolveRecipientTrusted(Connection connection, RecipientAddress address) throws SQLException {
+    private RecipientId resolveRecipientTrusted(Connection connection, RecipientAddress address) throws SQLException {
         final var pair = resolveRecipientTrustedLocked(connection, address, false);
         if (!pair.second().isEmpty()) {
             mergeRecipients(connection, pair.first(), pair.second());
@@ -317,8 +333,8 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
 
     @Override
     public void storeContact(RecipientId recipientId, final Contact contact) {
-        try (final var connection = database.getConnection()) {
-            storeContact(connection, recipientId, contact);
+        try (final var connection = getConnectionImpl()) {
+            storeContact(connection.get(), recipientId, contact);
         } catch (SQLException e) {
             throw new RuntimeException("Failed update recipient store", e);
         }
@@ -326,8 +342,8 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
 
     @Override
     public Contact getContact(RecipientId recipientId) {
-        try (final var connection = database.getConnection()) {
-            return getContact(connection, recipientId);
+        try (final var connection = getConnectionImpl()) {
+            return getContact(connection.get(), recipientId);
         } catch (SQLException e) {
             throw new RuntimeException("Failed read from recipient store", e);
         }
@@ -342,8 +358,8 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
                 WHERE (r.number IS NOT NULL OR r.pni IS NOT NULL OR r.aci IS NOT NULL) AND %s AND r.hidden = FALSE
                 """
         ).formatted(TABLE_RECIPIENT, SQL_IS_CONTACT);
-        try (final var connection = database.getConnection()) {
-            try (final var statement = connection.prepareStatement(sql)) {
+        try (final var connection = getConnectionImpl()) {
+            try (final var statement = connection.get().prepareStatement(sql)) {
                 try (var result = Utils.executeQueryForStream(statement,
                         resultSet -> new Pair<>(getRecipientIdFromResultSet(resultSet),
                                 getContactFromResultSet(resultSet)))) {
@@ -355,7 +371,7 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
         }
     }
 
-    public Recipient getRecipient(Connection connection, RecipientId recipientId) throws SQLException {
+    public Recipient getRecipient(RecipientId recipientId) throws SQLException {
         final var sql = (
                 """
                 SELECT r._id,
@@ -369,13 +385,15 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
                 WHERE r._id = ?
                 """
         ).formatted(TABLE_RECIPIENT);
-        try (final var statement = connection.prepareStatement(sql)) {
-            statement.setLong(1, recipientId.id());
-            return Utils.executeQuerySingleRow(statement, this::getRecipientFromResultSet);
-        }
+        return withConnection(connection -> {
+            try (final var statement = connection.prepareStatement(sql)) {
+                statement.setLong(1, recipientId.id());
+                return Utils.executeQuerySingleRow(statement, this::getRecipientFromResultSet);
+            }
+        });
     }
 
-    public Recipient getRecipient(Connection connection, StorageId storageId) throws SQLException {
+    public Recipient getRecipient(StorageId storageId) throws SQLException {
         final var sql = (
                 """
                 SELECT r._id,
@@ -389,19 +407,21 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
                 WHERE r.storage_id = ?
                 """
         ).formatted(TABLE_RECIPIENT);
-        try (final var statement = connection.prepareStatement(sql)) {
-            statement.setBytes(1, storageId.getRaw());
-            return Utils.executeQuerySingleRow(statement, this::getRecipientFromResultSet);
-        } catch (InvalidAddress e) {
-            try (final var statement = connection.prepareStatement("""
+        return withConnection(connection -> {
+            try (final var statement = connection.prepareStatement(sql)) {
+                statement.setBytes(1, storageId.getRaw());
+                return Utils.executeQuerySingleRow(statement, this::getRecipientFromResultSet);
+            } catch (InvalidAddress e) {
+                try (final var statement = connection.prepareStatement("""
                                                                    UPDATE %s SET aci=NULL, pni=NULL, username=NULL, number=NULL, storage_id=NULL WHERE storage_id = ?
                                                                    """.formatted(TABLE_RECIPIENT))) {
-                statement.setBytes(1, storageId.getRaw());
-                statement.executeUpdate();
+                    statement.setBytes(1, storageId.getRaw());
+                    statement.executeUpdate();
+                }
+                connection.commit();
+                throw e;
             }
-            connection.commit();
-            throw e;
-        }
+        });
     }
 
     public List<Recipient> getRecipients(
@@ -439,8 +459,8 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
                 """
         ).formatted(TABLE_RECIPIENT, sqlWhere.isEmpty() ? "TRUE" : String.join(" AND ", sqlWhere));
         final var selfAddress = selfAddressProvider.getSelfAddress();
-        try (final var connection = database.getConnection()) {
-            try (final var statement = connection.prepareStatement(sql)) {
+        try (final var connection = getConnectionImpl()) {
+            try (final var statement = connection.get().prepareStatement(sql)) {
                 if (blocked.isPresent()) {
                     statement.setBoolean(1, blocked.get());
                 }
@@ -471,8 +491,8 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
                 """
         ).formatted(TABLE_RECIPIENT);
         final var selfNumber = selfAddressProvider.getSelfAddress().number().orElse(null);
-        try (final var connection = database.getConnection()) {
-            try (final var statement = connection.prepareStatement(sql)) {
+        try (final var connection = getConnectionImpl()) {
+            try (final var statement = connection.get().prepareStatement(sql)) {
                 return Utils.executeQueryForStream(statement, resultSet -> resultSet.getString("number"))
                         .filter(Objects::nonNull)
                         .filter(n -> !n.equals(selfNumber))
@@ -500,8 +520,8 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
                 """
         ).formatted(TABLE_RECIPIENT);
         final var selfAci = selfAddressProvider.getSelfAddress().aci().orElse(null);
-        try (final var connection = database.getConnection()) {
-            try (final var statement = connection.prepareStatement(sql)) {
+        try (final var connection = getConnectionImpl()) {
+            try (final var statement = connection.get().prepareStatement(sql)) {
                 return Utils.executeQueryForStream(statement, resultSet -> {
                     final var aci = ACI.parseOrThrow(resultSet.getString("aci"));
                     if (aci.equals(selfAci)) {
@@ -516,7 +536,7 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
         }
     }
 
-    public List<RecipientId> getRecipientIds(Connection connection) throws SQLException {
+    public List<RecipientId> getRecipientIds() throws SQLException {
         final var sql = (
                 """
                 SELECT r._id
@@ -524,9 +544,11 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
                 WHERE (r.aci IS NOT NULL OR r.pni IS NOT NULL)
                 """
         ).formatted(TABLE_RECIPIENT);
-        try (final var statement = connection.prepareStatement(sql)) {
-            return Utils.executeQueryForStream(statement, this::getRecipientIdFromResultSet).toList();
-        }
+        return withConnection(connection -> {
+            try (final var statement = connection.prepareStatement(sql)) {
+                return Utils.executeQueryForStream(statement, this::getRecipientIdFromResultSet).toList();
+            }
+        });
     }
 
     public void setMissingStorageIds() {
@@ -544,12 +566,12 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
                 WHERE _id = ?
                 """
         ).formatted(TABLE_RECIPIENT);
-        try (final var connection = database.getConnection()) {
-            connection.setAutoCommit(false);
-            try (final var selectStmt = connection.prepareStatement(selectSql)) {
+        try (final var connection = getConnectionImpl()) {
+            connection.get().setAutoCommit(false);
+            try (final var selectStmt = connection.get().prepareStatement(selectSql)) {
                 final var recipientIds = Utils.executeQueryForStream(selectStmt, this::getRecipientIdFromResultSet)
                         .toList();
-                try (final var updateStmt = connection.prepareStatement(updateSql)) {
+                try (final var updateStmt = connection.get().prepareStatement(updateSql)) {
                     for (final var recipientId : recipientIds) {
                         updateStmt.setBytes(1, KeyUtils.createRawStorageId());
                         updateStmt.setLong(2, recipientId.id());
@@ -557,7 +579,7 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
                     }
                 }
             }
-            connection.commit();
+            connection.get().commit();
         } catch (SQLException e) {
             throw new RuntimeException("Failed update recipient store", e);
         }
@@ -570,7 +592,8 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
 
     public void deleteRecipientData(RecipientId recipientId) {
         logger.debug("Deleting recipient data for {}", recipientId);
-        try (final var connection = database.getConnection()) {
+        try (final var connectionHolder = getConnectionImpl()) {
+            var connection = connectionHolder.get();
             connection.setAutoCommit(false);
             recipientAddressCache.entrySet().removeIf(e -> e.getValue().id().equals(recipientId));
             storeContact(connection, recipientId, null);
@@ -586,8 +609,8 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
 
     @Override
     public Profile getProfile(final RecipientId recipientId) {
-        try (final var connection = database.getConnection()) {
-            return getProfile(connection, recipientId);
+        try (final var connection = getConnectionImpl()) {
+            return getProfile(connection.get(), recipientId);
         } catch (SQLException e) {
             throw new RuntimeException("Failed read from recipient store", e);
         }
@@ -595,8 +618,8 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
 
     @Override
     public ProfileKey getProfileKey(final RecipientId recipientId) {
-        try (final var connection = database.getConnection()) {
-            return getProfileKey(connection, recipientId);
+        try (final var connection = getConnectionImpl()) {
+            return getProfileKey(connection.get(), recipientId);
         } catch (SQLException e) {
             throw new RuntimeException("Failed read from recipient store", e);
         }
@@ -604,8 +627,8 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
 
     @Override
     public ExpiringProfileKeyCredential getExpiringProfileKeyCredential(final RecipientId recipientId) {
-        try (final var connection = database.getConnection()) {
-            return getExpiringProfileKeyCredential(connection, recipientId);
+        try (final var connection = getConnectionImpl()) {
+            return getExpiringProfileKeyCredential(connection.get(), recipientId);
         } catch (SQLException e) {
             throw new RuntimeException("Failed read from recipient store", e);
         }
@@ -613,8 +636,8 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
 
     @Override
     public void storeProfile(RecipientId recipientId, final Profile profile) {
-        try (final var connection = database.getConnection()) {
-            storeProfile(connection, recipientId, profile);
+        try (final var connection = getConnectionImpl()) {
+            storeProfile(connection.get(), recipientId, profile);
         } catch (SQLException e) {
             throw new RuntimeException("Failed update recipient store", e);
         }
@@ -622,14 +645,14 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
 
     @Override
     public void storeProfileKey(RecipientId recipientId, final ProfileKey profileKey) {
-        try (final var connection = database.getConnection()) {
-            storeProfileKey(connection, recipientId, profileKey);
+        try (final var connection = getConnectionImpl()) {
+            storeProfileKey(connection.get(), recipientId, profileKey);
         } catch (SQLException e) {
             throw new RuntimeException("Failed update recipient store", e);
         }
     }
 
-    public void storeProfileKey(
+    private void storeProfileKey(
             Connection connection,
             RecipientId recipientId,
             final ProfileKey profileKey
@@ -642,44 +665,50 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
             RecipientId recipientId,
             final ExpiringProfileKeyCredential profileKeyCredential
     ) {
-        try (final var connection = database.getConnection()) {
-            storeExpiringProfileKeyCredential(connection, recipientId, profileKeyCredential);
+        try (final var connection = getConnectionImpl()) {
+            storeExpiringProfileKeyCredential(connection.get(), recipientId, profileKeyCredential);
         } catch (SQLException e) {
             throw new RuntimeException("Failed update recipient store", e);
         }
     }
 
     public void rotateSelfStorageId() {
-        try (final var connection = database.getConnection()) {
-            rotateSelfStorageId(connection);
+        try (final var connection = getConnectionImpl()) {
+            rotateSelfStorageId(connection.get());
         } catch (SQLException e) {
             throw new RuntimeException("Failed update recipient store", e);
         }
     }
 
-    public void rotateSelfStorageId(final Connection connection) throws SQLException {
+    private void rotateSelfStorageId(final Connection connection) throws SQLException {
         final var selfRecipientId = resolveRecipient(connection, selfAddressProvider.getSelfAddress());
         rotateStorageId(connection, selfRecipientId);
     }
 
-    public StorageId rotateStorageId(final Connection connection, final ServiceId serviceId) throws SQLException {
+    public StorageId rotateStorageId(final ServiceId serviceId) throws SQLException {
+        return withConnection(connection -> rotateStorageId(connection, serviceId));
+    }
+
+    private StorageId rotateStorageId(final Connection connection, final ServiceId serviceId) throws SQLException {
         final var selfRecipientId = resolveRecipient(connection, new RecipientAddress(serviceId));
         return rotateStorageId(connection, selfRecipientId);
     }
 
-    public List<StorageId> getStorageIds(Connection connection) throws SQLException {
+    public List<StorageId> getStorageIds() throws SQLException {
         final var sql = """
                         SELECT r.storage_id
                         FROM %s r WHERE r.storage_id IS NOT NULL AND r._id != ? AND (r.aci IS NOT NULL OR r.pni IS NOT NULL)
                         """.formatted(TABLE_RECIPIENT);
-        final var selfRecipientId = resolveRecipient(connection, selfAddressProvider.getSelfAddress());
-        try (final var statement = connection.prepareStatement(sql)) {
-            statement.setLong(1, selfRecipientId.id());
-            return Utils.executeQueryForStream(statement, this::getContactStorageIdFromResultSet).toList();
-        }
+        return withConnection(connection -> {
+            final var selfRecipientId = resolveRecipient(connection, selfAddressProvider.getSelfAddress());
+            try (final var statement = connection.prepareStatement(sql)) {
+                statement.setLong(1, selfRecipientId.id());
+                return Utils.executeQueryForStream(statement, this::getContactStorageIdFromResultSet).toList();
+            }
+        });
     }
 
-    public void updateStorageId(
+    private void updateStorageId(
             Connection connection,
             RecipientId recipientId,
             StorageId storageId
@@ -698,7 +727,7 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
         }
     }
 
-    public void updateStorageIds(Connection connection, Map<RecipientId, StorageId> storageIdMap) throws SQLException {
+    public void updateStorageIds(Map<RecipientId, StorageId> storageIdMap) throws SQLException {
         final var sql = (
                 """
                 UPDATE %s
@@ -706,21 +735,28 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
                 WHERE _id = ?
                 """
         ).formatted(TABLE_RECIPIENT);
-        try (final var statement = connection.prepareStatement(sql)) {
-            for (final var entry : storageIdMap.entrySet()) {
-                statement.setBytes(1, entry.getValue().getRaw());
-                statement.setLong(2, entry.getKey().id());
-                statement.executeUpdate();
+        withConnectionRun(connection -> {
+            try (final var statement = connection.prepareStatement(sql)) {
+                for (final var entry : storageIdMap.entrySet()) {
+                    statement.setBytes(1, entry.getValue().getRaw());
+                    statement.setLong(2, entry.getKey().id());
+                    statement.executeUpdate();
+                }
             }
-        }
+        });
     }
 
-    public StorageId getSelfStorageId(final Connection connection) throws SQLException {
-        final var selfRecipientId = resolveRecipient(connection, selfAddressProvider.getSelfAddress());
-        return StorageId.forAccount(getStorageId(connection, selfRecipientId).getRaw());
+    public StorageId getSelfStorageId() throws SQLException {
+        return withConnection(connection ->
+            StorageId.forAccount(getStorageId(connection, resolveRecipient(connection, selfAddressProvider.getSelfAddress())).getRaw())
+        );
     }
 
-    public StorageId getStorageId(final Connection connection, final RecipientId recipientId) throws SQLException {
+    public StorageId getStorageId(final RecipientId recipientId) throws SQLException {
+        return withConnection(connection -> getStorageId(connection, recipientId));
+    }
+
+    private StorageId getStorageId(final Connection connection, final RecipientId recipientId) throws SQLException {
         final var sql = """
                         SELECT r.storage_id
                         FROM %s r WHERE r._id = ? AND r.storage_id IS NOT NULL
@@ -742,6 +778,14 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
     }
 
     public void storeStorageRecord(
+        final RecipientId recipientId,
+        final StorageId storageId,
+        final byte[] storageRecord
+    ) throws SQLException {
+        withConnectionRun(connection -> storeStorageRecord(connection, recipientId, storageId, storageRecord));
+    }
+
+    private void storeStorageRecord(
             final Connection connection,
             final RecipientId recipientId,
             final StorageId storageId,
@@ -786,7 +830,8 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
                 VALUES (?, ?, ?)
                 """
         ).formatted(TABLE_RECIPIENT);
-        try (final var connection = database.getConnection()) {
+        try (final var connectionHolder = getConnectionImpl()) {
+            var connection = connectionHolder.get();
             connection.setAutoCommit(false);
             try (final var statement = connection.prepareStatement("DELETE FROM %s".formatted(TABLE_RECIPIENT))) {
                 statement.executeUpdate();
@@ -833,7 +878,7 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
         return recipientId;
     }
 
-    public void storeContact(
+    private void storeContact(
             final Connection connection,
             final RecipientId recipientId,
             final Contact contact
@@ -875,7 +920,6 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
     }
 
     public int removeStorageIdsFromLocalOnlyUnregisteredRecipients(
-            final Connection connection,
             final List<StorageId> storageIds
     ) throws SQLException {
         final var sql = (
@@ -885,19 +929,21 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
                 WHERE storage_id = ? AND unregistered_timestamp IS NOT NULL
                 """
         ).formatted(TABLE_RECIPIENT);
-        var count = 0;
-        try (final var statement = connection.prepareStatement(sql)) {
-            for (final var storageId : storageIds) {
-                statement.setBytes(1, storageId.getRaw());
-                count += statement.executeUpdate();
+        return withConnection(connection -> {
+            var count = 0;
+            try (final var statement = connection.prepareStatement(sql)) {
+                for (final var storageId : storageIds) {
+                    statement.setBytes(1, storageId.getRaw());
+                    count += statement.executeUpdate();
+                }
             }
-        }
-        return count;
+            return count;
+        });
     }
 
     public void markNeedsPniSignature(final RecipientId recipientId, final boolean value) {
         logger.debug("Marking {} numbers as need pni signature = {}", recipientId, value);
-        try (final var connection = database.getConnection()) {
+        try (final var connection = getConnectionImpl()) {
             final var sql = (
                     """
                     UPDATE %s
@@ -905,7 +951,7 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
                     WHERE _id = ?
                     """
             ).formatted(TABLE_RECIPIENT);
-            try (final var statement = connection.prepareStatement(sql)) {
+            try (final var statement = connection.get().prepareStatement(sql)) {
                 statement.setBoolean(1, value);
                 statement.setLong(2, recipientId.id());
                 statement.executeUpdate();
@@ -916,7 +962,7 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
     }
 
     public boolean needsPniSignature(final RecipientId recipientId) {
-        try (final var connection = database.getConnection()) {
+        try (final var connection = getConnectionImpl()) {
             final var sql = (
                     """
                     SELECT needs_pni_signature
@@ -924,7 +970,7 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
                     WHERE _id = ?
                     """
             ).formatted(TABLE_RECIPIENT);
-            try (final var statement = connection.prepareStatement(sql)) {
+            try (final var statement = connection.get().prepareStatement(sql)) {
                 statement.setLong(1, recipientId.id());
                 return Utils.executeQuerySingleRow(statement, resultSet -> resultSet.getBoolean("needs_pni_signature"));
             }
@@ -935,7 +981,8 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
 
     public void markUndiscoverablePossiblyUnregistered(final Set<String> numbers) {
         logger.debug("Marking {} numbers as undiscoverable", numbers.size());
-        try (final var connection = database.getConnection()) {
+        try (final var connectionHolder = getConnectionImpl()) {
+            var connection = connectionHolder.get();
             connection.setAutoCommit(false);
             for (final var number : numbers) {
                 final var recipientAddress = findByNumber(connection, number);
@@ -958,7 +1005,8 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
 
     public void markDiscoverable(final Set<String> numbers) {
         logger.debug("Marking {} numbers as discoverable", numbers.size());
-        try (final var connection = database.getConnection()) {
+        try (final var connectionHolder = getConnectionImpl()) {
+            var connection = connectionHolder.get();
             connection.setAutoCommit(false);
             for (final var number : numbers) {
                 final var recipientAddress = findByNumber(connection, number);
@@ -975,7 +1023,8 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
 
     public void markRegistered(final RecipientId recipientId, final boolean registered) {
         logger.debug("Marking {} as registered={}", recipientId, registered);
-        try (final var connection = database.getConnection()) {
+        try (final var connectionHolder = getConnectionImpl()) {
+            var connection = connectionHolder.get();
             connection.setAutoCommit(false);
             if (registered) {
                 markRegistered(connection, recipientId);
@@ -1068,7 +1117,7 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
         }
     }
 
-    public void storeProfile(
+    private void storeProfile(
             final Connection connection,
             final RecipientId recipientId,
             final Profile profile
@@ -1157,20 +1206,20 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
 
     private RecipientId resolveRecipientTrusted(RecipientAddress address, boolean isSelf) {
         final Pair<RecipientId, List<RecipientId>> pair;
-        try (final var connection = database.getConnection()) {
-            connection.setAutoCommit(false);
-            pair = resolveRecipientTrustedLocked(connection, address, isSelf);
-            connection.commit();
+        try (final var connection = getConnectionImpl()) {
+            connection.get().setAutoCommit(false);
+            pair = resolveRecipientTrustedLocked(connection.get(), address, isSelf);
+            connection.get().commit();
         } catch (SQLException e) {
             throw new RuntimeException("Failed update recipient store", e);
         }
 
         if (!pair.second().isEmpty()) {
             logger.debug("Resolved address {}, merging {} other recipients", address, pair.second().size());
-            try (final var connection = database.getConnection()) {
-                connection.setAutoCommit(false);
-                mergeRecipients(connection, pair.first(), pair.second());
-                connection.commit();
+            try (final var connection = getConnectionImpl()) {
+                connection.get().setAutoCommit(false);
+                mergeRecipients(connection.get(), pair.first(), pair.second());
+                connection.get().commit();
             } catch (SQLException e) {
                 throw new RuntimeException("Failed update recipient store", e);
             }
@@ -1504,7 +1553,7 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
         }
     }
 
-    public Profile getProfile(final Connection connection, final RecipientId recipientId) throws SQLException {
+    private Profile getProfile(final Connection connection, final RecipientId recipientId) throws SQLException {
         final var sql = (
                 """
                 SELECT r.profile_last_update_timestamp, r.profile_given_name, r.profile_family_name, r.profile_about, r.profile_about_emoji, r.profile_avatar_url_path, r.profile_mobile_coin_address, r.profile_unidentified_access_mode, r.profile_capabilities, r.profile_phone_number_sharing

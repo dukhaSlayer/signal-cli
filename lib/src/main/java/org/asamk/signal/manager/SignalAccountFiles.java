@@ -41,7 +41,16 @@ public class SignalAccountFiles {
             final String userAgent,
             final Settings settings
     ) throws IOException {
-        this.pathConfig = PathConfig.createDefault(settingsPath);
+        this(PathConfig.createDefault(settingsPath), serviceEnvironment, userAgent, settings);
+    }
+
+    public SignalAccountFiles(
+        final PathConfig pathConfig,
+        final ServiceEnvironment serviceEnvironment,
+        final String userAgent,
+        final Settings settings
+    ) throws IOException {
+        this.pathConfig = pathConfig;
         this.serviceEnvironment = serviceEnvironment;
         this.serviceEnvironmentConfig = ServiceConfig.getServiceEnvironmentConfig(this.serviceEnvironment, userAgent);
         this.userAgent = userAgent;
