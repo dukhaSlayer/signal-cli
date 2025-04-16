@@ -527,6 +527,11 @@ public class ManagerImpl implements Manager {
     }
 
     @Override
+    public void forceRefreshPreKeys() throws IOException {
+        context.getPreKeyHelper().forceRefreshPreKeys();
+    }
+
+    @Override
     public List<Group> getGroups() {
         return context.getGroupHelper().getGroups().stream().map(this::toGroup).toList();
     }
