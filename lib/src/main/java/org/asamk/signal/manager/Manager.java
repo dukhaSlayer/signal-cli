@@ -478,4 +478,6 @@ public interface Manager extends Closeable {
 
         void handleCallEvent(CallInfo callInfo, String reason);
     }
+
+    void forceRefreshPreKeys() throws IOException;
 }
