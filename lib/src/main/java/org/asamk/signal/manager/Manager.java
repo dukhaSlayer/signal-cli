@@ -426,4 +426,6 @@ public interface Manager extends Closeable {
 
         void handleMessage(MessageEnvelope envelope, Throwable e);
     }
+
+    void forceRefreshPreKeys() throws IOException;
 }
