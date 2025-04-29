@@ -17,6 +17,7 @@ public class JobExecutor implements AutoCloseable {
     private final ExecutorService executorService;
     private Job running;
     private final Queue<Job> queue = new ArrayDeque<>();
+    private boolean terminating = false;
 
     public JobExecutor(final Context context) {
         this.context = context;
@@ -24,12 +25,17 @@ public class JobExecutor implements AutoCloseable {
     }
 
     public void enqueueJob(Job job) {
-        if (executorService.isShutdown()) {
-            logger.debug("Not enqueuing {} job, shutting down", job.getClass().getSimpleName());
-            return;
-        }
+        boolean executorShutdown = executorService.isShutdown();
 
         synchronized (queue) {
+            // Ensure that if terminating is set, no new
+            // jobs will be queued, and if the queue is empty
+            // when terminating was set, it'll remain empty.
+            if (executorShutdown || terminating) {
+                logger.debug("Not enqueuing {} job, shutting down", job.getClass().getSimpleName());
+                return;
+            }
+
             logger.trace("Enqueuing {} job", job.getClass().getSimpleName());
             queue.add(job);
         }
@@ -45,14 +51,14 @@ public class JobExecutor implements AutoCloseable {
             }
             job = queue.poll();
             running = job;
+
+            // queue is empty
+            if (job == null) {
+                queue.notifyAll();
+                return;
+            }
         }
 
-        if (job == null) {
-            synchronized (this) {
-                this.notifyAll();
-            }
-            return;
-        }
         logger.debug("Running {} job", job.getClass().getSimpleName());
         executorService.execute(() -> {
             try {
@@ -63,6 +69,7 @@ public class JobExecutor implements AutoCloseable {
                 synchronized (queue) {
                     running = null;
                 }
+                logger.debug("Finished {} job", job.getClass().getSimpleName());
                 runNextJob();
             }
         });
@@ -70,20 +77,26 @@ public class JobExecutor implements AutoCloseable {
 
     @Override
     public void close() {
-        final boolean queueEmpty;
+        logger.debug("Stopping JobExecutor: waiting for the queue to empty");
         synchronized (queue) {
-            queueEmpty = queue.isEmpty();
-        }
-        if (queueEmpty) {
-            executorService.close();
-            return;
-        }
-        synchronized (this) {
-            try {
-                this.wait();
-            } catch (InterruptedException ignored) {
+            // Stop accepting new jobs.
+            terminating = true;
+
+            // Wait till queued jobs are processed and the queue is empty.
+            while (!queue.isEmpty()){
+                try {
+                    queue.wait(1000L);
+                } catch (InterruptedException e) {
+                    logger.info("Discarding JobExecutor job queue");
+                    queue.clear();
+                    break;
+                }
             }
         }
+
+        logger.debug("Stopping JobExecutor: waiting for the last job to finish");
         executorService.close();
+
+        logger.debug("Stopped JobExecutor");
     }
 }
