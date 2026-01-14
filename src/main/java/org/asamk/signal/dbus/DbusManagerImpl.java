@@ -272,6 +272,11 @@ public class DbusManagerImpl implements Manager {
     }
 
     @Override
+    public void forceRefreshPreKeys() throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public List<Group> getGroups() {
         final var groups = signal.listGroups();
         return groups.stream().map(Signal.StructGroup::getObjectPath).map(this::getGroup).toList();
