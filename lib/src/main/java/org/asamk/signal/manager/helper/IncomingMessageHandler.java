@@ -64,6 +64,7 @@ import org.whispersystems.signalservice.api.messages.SignalServiceGroupV2;
 import org.whispersystems.signalservice.api.messages.SignalServicePniSignatureMessage;
 import org.whispersystems.signalservice.api.messages.SignalServiceReceiptMessage;
 import org.whispersystems.signalservice.api.messages.SignalServiceStoryMessage;
+import org.whispersystems.signalservice.api.messages.calls.SignalServiceCallMessage;
 import org.whispersystems.signalservice.api.messages.multidevice.SignalServiceSyncMessage;
 import org.whispersystems.signalservice.api.messages.multidevice.StickerPackOperationMessage;
 import org.whispersystems.signalservice.api.push.ServiceIdType;
@@ -402,27 +403,33 @@ public final class IncomingMessageHandler {
         }
 
         if (content.getCallMessage().isPresent()) {
-            handleCallMessage(content.getCallMessage().get(), sender);
+            handleCallMessage(content.getCallMessage().get(), sender, senderDeviceId);
         }
 
         return new Pair<>(actions, longTexts);
     }
 
     private void handleCallMessage(
-            final org.whispersystems.signalservice.api.messages.calls.SignalServiceCallMessage callMessage,
-            final org.asamk.signal.manager.storage.recipients.RecipientId sender
+            final SignalServiceCallMessage callMessage,
+            final RecipientId sender,
+            final int deviceId
     ) {
         var callManager = context.getCallManager();
+        if (callMessage.getDestinationDeviceId().isPresent()
+                && callMessage.getDestinationDeviceId().get() != account.getDeviceId()) {
+            return;
+        }
 
         callMessage.getOfferMessage().ifPresent(offer -> {
-            var type = offer.getType() == org.whispersystems.signalservice.api.messages.calls.OfferMessage.Type.VIDEO_CALL
+            var type = offer.getType()
+                    == org.whispersystems.signalservice.api.messages.calls.OfferMessage.Type.VIDEO_CALL
                     ? org.asamk.signal.manager.api.MessageEnvelope.Call.Offer.Type.VIDEO_CALL
                     : org.asamk.signal.manager.api.MessageEnvelope.Call.Offer.Type.AUDIO_CALL;
-            callManager.handleIncomingOffer(sender, offer.getId(), type, offer.getOpaque());
+            callManager.handleIncomingOffer(sender, deviceId, offer.getId(), type, offer.getOpaque());
         });
 
-        callMessage.getAnswerMessage().ifPresent(answer ->
-                callManager.handleIncomingAnswer(answer.getId(), answer.getOpaque()));
+        callMessage.getAnswerMessage()
+                .ifPresent(answer -> callManager.handleIncomingAnswer(answer.getId(), deviceId, answer.getOpaque()));
 
         callMessage.getIceUpdateMessages().ifPresent(iceUpdates -> {
             for (var ice : iceUpdates) {
@@ -440,8 +447,7 @@ public final class IncomingMessageHandler {
             }
         });
 
-        callMessage.getBusyMessage().ifPresent(busy ->
-                callManager.handleIncomingBusy(busy.getId()));
+        callMessage.getBusyMessage().ifPresent(busy -> callManager.handleIncomingBusy(busy.getId()));
     }
 
     private boolean handlePniSignatureMessage(

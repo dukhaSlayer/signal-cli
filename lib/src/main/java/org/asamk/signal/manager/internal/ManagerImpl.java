@@ -21,7 +21,6 @@ import org.asamk.signal.manager.api.AlreadyReceivingException;
 import org.asamk.signal.manager.api.AttachmentInvalidException;
 import org.asamk.signal.manager.api.CallInfo;
 import org.asamk.signal.manager.api.CallOffer;
-import org.asamk.signal.manager.api.TurnServer;
 import org.asamk.signal.manager.api.CaptchaRejectedException;
 import org.asamk.signal.manager.api.CaptchaRequiredException;
 import org.asamk.signal.manager.api.Configuration;
@@ -65,6 +64,7 @@ import org.asamk.signal.manager.api.StickerPackId;
 import org.asamk.signal.manager.api.StickerPackInvalidException;
 import org.asamk.signal.manager.api.StickerPackUrl;
 import org.asamk.signal.manager.api.TextStyle;
+import org.asamk.signal.manager.api.TurnServer;
 import org.asamk.signal.manager.api.TypingAction;
 import org.asamk.signal.manager.api.UnregisteredRecipientException;
 import org.asamk.signal.manager.api.UpdateGroup;
@@ -172,7 +172,6 @@ public class ManagerImpl implements Manager {
     private boolean isReceivingSynchronous;
     private final Set<ReceiveMessageHandler> weakHandlers = new HashSet<>();
     private final Set<ReceiveMessageHandler> messageHandlers = new HashSet<>();
-    private final Set<CallEventListener> callEventListeners = new HashSet<>();
     private final List<Runnable> closedListeners = new ArrayList<>();
     private final List<Runnable> addressChangedListeners = new ArrayList<>();
     private final CompositeDisposable disposable = new CompositeDisposable();
@@ -961,11 +960,9 @@ public class ManagerImpl implements Manager {
         final var messageBuilder = SignalServiceDataMessage.newBuilder().withRemoteDelete(delete);
         for (final var recipient : recipients) {
             if (recipient instanceof RecipientIdentifier.Uuid(var uuid)) {
-                account.getMessageSendLogStore()
-                        .deleteEntryForRecipientNonGroup(targetSentTimestamp, ACI.from(uuid));
+                account.getMessageSendLogStore().deleteEntryForRecipientNonGroup(targetSentTimestamp, ACI.from(uuid));
             } else if (recipient instanceof RecipientIdentifier.Pni(var pni)) {
-                account.getMessageSendLogStore()
-                        .deleteEntryForRecipientNonGroup(targetSentTimestamp, PNI.from(pni));
+                account.getMessageSendLogStore().deleteEntryForRecipientNonGroup(targetSentTimestamp, PNI.from(pni));
             } else if (recipient instanceof RecipientIdentifier.Single r) {
                 try {
                     final var recipientId = context.getRecipientHelper().resolveRecipient(r);
@@ -1717,17 +1714,11 @@ public class ManagerImpl implements Manager {
 
     @Override
     public void addCallEventListener(final CallEventListener listener) {
-        synchronized (callEventListeners) {
-            callEventListeners.add(listener);
-        }
         context.getCallManager().addCallEventListener(listener);
     }
 
     @Override
     public void removeCallEventListener(final CallEventListener listener) {
-        synchronized (callEventListeners) {
-            callEventListeners.remove(listener);
-        }
         context.getCallManager().removeCallEventListener(listener);
     }
 
@@ -1792,7 +1783,8 @@ public class ManagerImpl implements Manager {
 
     @Override
     public CallInfo startCall(final RecipientIdentifier.Single recipient) throws IOException, UnregisteredRecipientException {
-        return context.getCallManager().startOutgoingCall(recipient);
+        final var recipientId = context.getRecipientHelper().resolveRecipient(recipient);
+        return context.getCallManager().startOutgoingCall(recipientId);
     }
 
     @Override
@@ -1806,8 +1798,9 @@ public class ManagerImpl implements Manager {
     }
 
     @Override
-    public void rejectCall(final long callId) throws IOException {
-        context.getCallManager().rejectCall(callId);
+    public SendMessageResult rejectCall(final long callId) throws IOException {
+        final var result = context.getCallManager().rejectCall(callId);
+        return toSendMessageResult(result);
     }
 
     @Override
@@ -1858,9 +1851,7 @@ public class ManagerImpl implements Manager {
     ) throws IOException, UnregisteredRecipientException {
         final var recipientId = context.getRecipientHelper().resolveRecipient(recipient);
         final var address = context.getRecipientHelper().resolveSignalServiceAddress(recipientId);
-        var iceUpdates = iceCandidates.stream()
-                .map(opaque -> new IceUpdateMessage(callId, opaque))
-                .toList();
+        var iceUpdates = iceCandidates.stream().map(opaque -> new IceUpdateMessage(callId, opaque)).toList();
         var callMessage = SignalServiceCallMessage.forIceUpdates(iceUpdates, null);
         try {
             dependencies.getMessageSender().sendCallMessage(address, null, callMessage);
@@ -1925,12 +1916,6 @@ public class ManagerImpl implements Manager {
         }
         if (thread != null) {
             stopReceiveThread(thread);
-        }
-        synchronized (callEventListeners) {
-            for (var listener : callEventListeners) {
-                context.getCallManager().removeCallEventListener(listener);
-            }
-            callEventListeners.clear();
         }
         context.close();
         executor.close();

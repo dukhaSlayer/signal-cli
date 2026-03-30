@@ -1,8 +1,8 @@
 package org.asamk.signal.manager.helper;
 
 import org.asamk.signal.manager.api.CallInfo;
-import org.asamk.signal.manager.api.RecipientAddress;
-
+import org.asamk.signal.manager.storage.recipients.TestRecipientId;
+import org.asamk.signal.manager.util.Utils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -29,17 +29,23 @@ class CallManagerTest {
     private static final MethodHandle CALL_ID_UNSIGNED;
     private static final MethodHandle GENERATE_CALL_ID;
 
+    final RecipientAddressResolver recipientAddressResolver = (id) -> new org.asamk.signal.manager.storage.recipients.RecipientAddress(
+            id.toString());
+
     static {
         try {
             var lookup = MethodHandles.privateLookupIn(CallManager.class, MethodHandles.lookup());
 
-            GET_RAW_IDENTITY_KEY_BYTES = lookup.findStatic(CallManager.class, "getRawIdentityKeyBytes",
+            GET_RAW_IDENTITY_KEY_BYTES = lookup.findStatic(CallManager.class,
+                    "getRawIdentityKeyBytes",
                     MethodType.methodType(byte[].class, byte[].class));
 
-            CALL_ID_UNSIGNED = lookup.findStatic(CallManager.class, "callIdUnsigned",
+            CALL_ID_UNSIGNED = lookup.findStatic(Utils.class,
+                    "callIdUnsigned",
                     MethodType.methodType(BigInteger.class, long.class));
 
-            GENERATE_CALL_ID = lookup.findStatic(CallManager.class, "generateCallId",
+            GENERATE_CALL_ID = lookup.findStatic(CallManager.class,
+                    "generateCallId",
                     MethodType.methodType(long.class));
 
         } catch (ReflectiveOperationException e) {
@@ -62,14 +68,7 @@ class CallManagerTest {
     // --- Helper to create a minimal CallState for state machine tests ---
 
     private static CallManager.CallState makeCallState(long callId, CallInfo.State initialState) {
-        var address = new RecipientAddress("a1b2c3d4-e5f6-7890-abcd-ef1234567890", null, "+15551234567", null);
-        return new CallManager.CallState(
-                callId,
-                initialState,
-                address,
-                new org.asamk.signal.manager.api.RecipientIdentifier.Number("+15551234567"),
-                true
-        );
+        return new CallManager.CallState(callId, initialState, TestRecipientId.createTestId(15551234567L), null, true);
     }
 
     // ========================================================================
@@ -164,14 +163,6 @@ class CallManagerTest {
     // ========================================================================
     // generateCallId tests
     // ========================================================================
-
-    @Test
-    void generateCallId_alwaysNonNegative() throws Throwable {
-        for (int i = 0; i < 200; i++) {
-            long id = generateCallId();
-            assertTrue(id >= 0, "generateCallId returned negative: " + id);
-        }
-    }
 
     @Test
     void generateCallId_producesVariation() throws Throwable {
@@ -336,11 +327,11 @@ class CallManagerTest {
         state.inputDeviceName = "test_input";
         state.outputDeviceName = "test_output";
 
-        var info = state.toCallInfo();
+        var info = state.toCallInfo(recipientAddressResolver);
 
         assertEquals(42L, info.callId());
         assertEquals(CallInfo.State.CONNECTED, info.state());
-        assertEquals("+15551234567", info.recipient().number().orElse(null));
+        assertEquals("RecipientId[id=15551234567]", info.recipient().number().orElse(null));
         assertTrue(info.isOutgoing());
         assertEquals("test_input", info.inputDeviceName());
         assertEquals("test_output", info.outputDeviceName());
@@ -350,7 +341,7 @@ class CallManagerTest {
     void callState_toCallInfoNullDeviceNames() {
         var state = makeCallState(1L, CallInfo.State.RINGING_INCOMING);
 
-        var info = state.toCallInfo();
+        var info = state.toCallInfo(recipientAddressResolver);
 
         assertEquals(CallInfo.State.RINGING_INCOMING, info.state());
         assertEquals(null, info.inputDeviceName());

@@ -61,13 +61,13 @@ The first line written to the tunnel's stdin:
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `call_id` | unsigned 64-bit integer | Call identifier (use unsigned representation) |
-| `is_outgoing` | boolean | Whether this is an outgoing call |
-| `local_device_id` | integer | Signal device ID |
-| `input_device_name` | string (optional) | Requested input audio device name |
-| `output_device_name` | string (optional) | Requested output audio device name |
+| Field                | Type                    | Description                                   |
+|----------------------|-------------------------|-----------------------------------------------|
+| `call_id`            | unsigned 64-bit integer | Call identifier (use unsigned representation) |
+| `is_outgoing`        | boolean                 | Whether this is an outgoing call              |
+| `local_device_id`    | integer                 | Signal device ID                              |
+| `input_device_name`  | string (optional)       | Requested input audio device name             |
+| `output_device_name` | string (optional)       | Requested output audio device name            |
 
 If `input_device_name` or `output_device_name` are omitted, the tunnel
 chooses default names. On Linux, these are per-call unique names (e.g.,
@@ -84,33 +84,39 @@ lines are control messages.
 
 ### signal-cli -> Tunnel (stdin)
 
-| Type | When | Fields |
-|------|------|--------|
-| `createOutgoingCall` | Outgoing call setup | `callId`, `peerId` |
-| `proceed` | After offer/receivedOffer | `callId`, `hideIp`, `iceServers` |
-| `receivedOffer` | Incoming call | `callId`, `peerId`, `opaque`, `age`, `senderDeviceId`, `senderIdentityKey`, `receiverIdentityKey` |
-| `receivedAnswer` | Outgoing call answered | `opaque`, `senderDeviceId`, `senderIdentityKey`, `receiverIdentityKey` |
-| `receivedIce` | ICE candidates arrive | `candidates` (array of base64 opaque blobs) |
-| `accept` | User accepts incoming call | *(none)* |
-| `hangup` | End the call | *(none)* |
+| Type                 | When                       | Fields                                                                                            |
+|----------------------|----------------------------|---------------------------------------------------------------------------------------------------|
+| `createOutgoingCall` | Outgoing call setup        | `callId`, `peerId`                                                                                |
+| `proceed`            | After offer/receivedOffer  | `callId`, `hideIp`, `iceServers`                                                                  |
+| `receivedOffer`      | Incoming call              | `callId`, `peerId`, `opaque`, `age`, `senderDeviceId`, `senderIdentityKey`, `receiverIdentityKey` |
+| `receivedAnswer`     | Outgoing call answered     | `opaque`, `senderDeviceId`, `senderIdentityKey`, `receiverIdentityKey`                            |
+| `receivedIce`        | ICE candidates arrive      | `candidates` (array of base64 opaque blobs)                                                       |
+| `accept`             | User accepts incoming call | *(none)*                                                                                          |
+| `hangup`             | End the call               | *(none)*                                                                                          |
 
 ### Tunnel -> signal-cli (stdout)
 
-| Type | When | Fields |
-|------|------|--------|
-| `ready` | Control socket bound, audio devices created | `inputDeviceName`, `outputDeviceName` |
-| `sendOffer` | Tunnel generated an offer | `callId`, `opaque`, `callMediaType` |
-| `sendAnswer` | Tunnel generated an answer | `callId`, `opaque` |
-| `sendIce` | ICE candidates gathered | `callId`, `candidates` (array of `{"opaque":"..."}`) |
-| `sendHangup` | Tunnel wants to hang up | `callId`, `hangupType` |
-| `sendBusy` | Line is busy | `callId` |
-| `stateChange` | Call state transition | `state`, `reason` (optional) |
-| `error` | Something went wrong | `message` |
+| Type          | When                                        | Fields                                               |
+|---------------|---------------------------------------------|------------------------------------------------------|
+| `ready`       | Control socket bound, audio devices created | `inputDeviceName`, `outputDeviceName`                |
+| `sendOffer`   | Tunnel generated an offer                   | `callId`, `opaque`, `callMediaType`                  |
+| `sendAnswer`  | Tunnel generated an answer                  | `callId`, `opaque`                                   |
+| `sendIce`     | ICE candidates gathered                     | `callId`, `candidates` (array of `{"opaque":"..."}`) |
+| `sendHangup`  | Tunnel wants to hang up                     | `callId`, `hangupType`                               |
+| `sendBusy`    | Line is busy                                | `callId`                                             |
+| `stateChange` | Call state transition                       | `state`, `reason` (optional)                         |
+| `error`       | Something went wrong                        | `message`                                            |
 
 Opaque blobs and identity keys are base64-encoded. ICE servers use the format:
 
 ```json
-{"urls":["turn:example.com"],"username":"u","password":"p"}
+{
+  "urls": [
+    "turn:example.com"
+  ],
+  "username": "u",
+  "password": "p"
+}
 ```
 
 ---
@@ -191,7 +197,6 @@ signal-cli            signal-call-tunnel           Remote Phone
 ### JSON-RPC client perspective
 
 An external application (bot, UI, test script) interacts via JSON-RPC only.
-It never touches the control socket directly.
 
 **Important:** Call event notifications are not sent by default. Clients must
 call `subscribeCallEvents` before initiating or receiving calls. Without this,

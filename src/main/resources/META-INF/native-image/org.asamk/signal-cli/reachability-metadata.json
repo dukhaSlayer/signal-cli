@@ -1083,6 +1083,12 @@
       ]
     },
     {
+      "type": "java.math.BigInteger"
+    },
+    {
+      "type": "java.math.BigInteger[]"
+    },
+    {
       "type": "java.net.NetPermission"
     },
     {
@@ -1978,7 +1984,15 @@
           "parameterTypes": []
         },
         {
+          "name": "inputDeviceName",
+          "parameterTypes": []
+        },
+        {
           "name": "mediaSocketPath",
+          "parameterTypes": []
+        },
+        {
+          "name": "outputDeviceName",
           "parameterTypes": []
         },
         {
@@ -2065,6 +2079,10 @@
           "parameterTypes": []
         },
         {
+          "name": "inputDeviceName",
+          "parameterTypes": []
+        },
+        {
           "name": "isOutgoing",
           "parameterTypes": []
         },
@@ -2074,6 +2092,10 @@
         },
         {
           "name": "number",
+          "parameterTypes": []
+        },
+        {
+          "name": "outputDeviceName",
           "parameterTypes": []
         },
         {
@@ -2298,7 +2320,15 @@
           "parameterTypes": []
         },
         {
+          "name": "inputDeviceName",
+          "parameterTypes": []
+        },
+        {
           "name": "mediaSocketPath",
+          "parameterTypes": []
+        },
+        {
+          "name": "outputDeviceName",
           "parameterTypes": []
         },
         {
@@ -2420,6 +2450,43 @@
     },
     {
       "type": "org.asamk.signal.json.JsonAttachment[]"
+    },
+    {
+      "type": "org.asamk.signal.json.JsonCallEvent",
+      "methods": [
+        {
+          "name": "callId",
+          "parameterTypes": []
+        },
+        {
+          "name": "inputDeviceName",
+          "parameterTypes": []
+        },
+        {
+          "name": "isOutgoing",
+          "parameterTypes": []
+        },
+        {
+          "name": "number",
+          "parameterTypes": []
+        },
+        {
+          "name": "outputDeviceName",
+          "parameterTypes": []
+        },
+        {
+          "name": "reason",
+          "parameterTypes": []
+        },
+        {
+          "name": "state",
+          "parameterTypes": []
+        },
+        {
+          "name": "uuid",
+          "parameterTypes": []
+        }
+      ]
     },
     {
       "type": "org.asamk.signal.json.JsonCallMessage",
@@ -7485,6 +7552,35 @@
       "allDeclaredMethods": true
     },
     {
+      "type": "org.whispersystems.signalservice.api.messages.calls.TurnServerInfo",
+      "fields": [
+        {
+          "name": "hostname"
+        },
+        {
+          "name": "password"
+        },
+        {
+          "name": "ttl"
+        },
+        {
+          "name": "urls"
+        },
+        {
+          "name": "urlsWithIps"
+        },
+        {
+          "name": "username"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "org.whispersystems.signalservice.api.messages.multidevice.DeviceInfo",
       "allDeclaredFields": true,
       "allDeclaredMethods": true,
@@ -8061,6 +8157,17 @@
         {
           "name": "<init>",
           "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.whispersystems.signalservice.internal.push.GetCallingRelaysResponse",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.util.List"
+          ]
         }
       ]
     },
