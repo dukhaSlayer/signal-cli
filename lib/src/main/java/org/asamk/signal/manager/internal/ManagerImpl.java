@@ -711,9 +711,9 @@ public class ManagerImpl implements Manager {
                     results.put(recipient,
                             List.of(SendMessageResult.unregisteredFailure(single.toPartialRecipientAddress())));
                 }
-            } else if (recipient instanceof RecipientIdentifier.Group group) {
+            } else if (recipient instanceof RecipientIdentifier.Group(GroupId groupId)) {
                 final var result = context.getSendHelper()
-                        .sendAsGroupMessage(messageBuilder, group.groupId(), notifySelf, editTargetTimestamp, urgent);
+                        .sendAsGroupMessage(messageBuilder, groupId, notifySelf, editTargetTimestamp, urgent);
                 results.put(recipient, result.stream().map(this::toSendMessageResult).toList());
             }
         }
@@ -853,7 +853,8 @@ public class ManagerImpl implements Manager {
             messageBuilder.withBody(message.messageText());
         }
         if (!message.attachments().isEmpty()) {
-            final var uploadedAttachments = context.getAttachmentHelper().uploadAttachments(message.attachments(), message.voiceNote());
+            final var uploadedAttachments = context.getAttachmentHelper()
+                    .uploadAttachments(message.attachments(), message.voiceNote());
             if (!additionalAttachments.isEmpty()) {
                 additionalAttachments.addAll(uploadedAttachments);
                 messageBuilder.withAttachments(additionalAttachments);
@@ -959,12 +960,12 @@ public class ManagerImpl implements Manager {
         var delete = new SignalServiceDataMessage.RemoteDelete(targetSentTimestamp);
         final var messageBuilder = SignalServiceDataMessage.newBuilder().withRemoteDelete(delete);
         for (final var recipient : recipients) {
-            if (recipient instanceof RecipientIdentifier.Uuid u) {
+            if (recipient instanceof RecipientIdentifier.Uuid(var uuid)) {
                 account.getMessageSendLogStore()
-                        .deleteEntryForRecipientNonGroup(targetSentTimestamp, ACI.from(u.uuid()));
-            } else if (recipient instanceof RecipientIdentifier.Pni pni) {
+                        .deleteEntryForRecipientNonGroup(targetSentTimestamp, ACI.from(uuid));
+            } else if (recipient instanceof RecipientIdentifier.Pni(var pni)) {
                 account.getMessageSendLogStore()
-                        .deleteEntryForRecipientNonGroup(targetSentTimestamp, PNI.from(pni.pni()));
+                        .deleteEntryForRecipientNonGroup(targetSentTimestamp, PNI.from(pni));
             } else if (recipient instanceof RecipientIdentifier.Single r) {
                 try {
                     final var recipientId = context.getRecipientHelper().resolveRecipient(r);
@@ -975,8 +976,8 @@ public class ManagerImpl implements Manager {
                     }
                 } catch (UnregisteredRecipientException ignored) {
                 }
-            } else if (recipient instanceof RecipientIdentifier.Group r) {
-                account.getMessageSendLogStore().deleteEntryForGroup(targetSentTimestamp, r.groupId());
+            } else if (recipient instanceof RecipientIdentifier.Group(var groupId)) {
+                account.getMessageSendLogStore().deleteEntryForGroup(targetSentTimestamp, groupId);
             }
         }
         return sendMessage(messageBuilder, recipients, false);
@@ -1149,8 +1150,8 @@ public class ManagerImpl implements Manager {
                     results.put(recipient,
                             List.of(SendMessageResult.unregisteredFailure(single.toPartialRecipientAddress())));
                 }
-            } else if (recipient instanceof RecipientIdentifier.Group group) {
-                final var result = context.getSyncHelper().sendMessageRequestResponse(type, group.groupId());
+            } else if (recipient instanceof RecipientIdentifier.Group(GroupId groupId)) {
+                final var result = context.getSyncHelper().sendMessageRequestResponse(type, groupId);
                 results.put(recipient, List.of(toSendMessageResult(result)));
             }
         }
@@ -1164,7 +1165,7 @@ public class ManagerImpl implements Manager {
             final List<String> options,
             final Set<RecipientIdentifier> recipients,
             final boolean notifySelf
-    ) throws IOException, NotAGroupMemberException, GroupNotFoundException, GroupSendingNotAllowedException, UnregisteredRecipientException {
+    ) throws IOException, NotAGroupMemberException, GroupNotFoundException, GroupSendingNotAllowedException {
         final var pollCreate = new SignalServiceDataMessage.PollCreate(question, allowMultiple, options);
         final var messageBuilder = SignalServiceDataMessage.newBuilder().withPollCreate(pollCreate);
         return sendMessage(messageBuilder, recipients, notifySelf);
@@ -1196,7 +1197,7 @@ public class ManagerImpl implements Manager {
             final long targetSentTimestamp,
             final Set<RecipientIdentifier> recipients,
             final boolean notifySelf
-    ) throws IOException, NotAGroupMemberException, GroupNotFoundException, GroupSendingNotAllowedException, UnregisteredRecipientException {
+    ) throws IOException, NotAGroupMemberException, GroupNotFoundException, GroupSendingNotAllowedException {
         final var pollTerminate = new SignalServiceDataMessage.PollTerminate(targetSentTimestamp);
         final var messageBuilder = SignalServiceDataMessage.newBuilder().withPollTerminate(pollTerminate);
         return sendMessage(messageBuilder, recipients, notifySelf);
