@@ -286,7 +286,7 @@ public class CallManager implements AutoCloseable {
         logger.debug("Received answer for call {}", callIdUnsigned(callId));
     }
 
-    public void handleIncomingIceCandidate(final long callId, final byte[] opaque) {
+    public void handleIncomingIceCandidate(final long callId, final byte[] opaque, final int deviceId) {
         var state = activeCalls.get(callId);
         if (state == null) {
             logger.debug("Received ICE candidate for unknown call {}", callIdUnsigned(callId));
@@ -296,6 +296,7 @@ public class CallManager implements AutoCloseable {
         // Forward to subprocess as receivedIce
         var iceMsg = mapper.createObjectNode();
         iceMsg.put("type", "receivedIce");
+        iceMsg.put("senderDeviceId", deviceId);
         var candidates = iceMsg.putArray("candidates");
         candidates.add(java.util.Base64.getEncoder().encodeToString(opaque));
         sendControlMessage(state, writeJson(iceMsg));

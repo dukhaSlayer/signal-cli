@@ -433,7 +433,7 @@ public final class IncomingMessageHandler {
 
         callMessage.getIceUpdateMessages().ifPresent(iceUpdates -> {
             for (var ice : iceUpdates) {
-                callManager.handleIncomingIceCandidate(ice.getId(), ice.getOpaque());
+                callManager.handleIncomingIceCandidate(ice.getId(), ice.getOpaque(), deviceId);
             }
         });
 
