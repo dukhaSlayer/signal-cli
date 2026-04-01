@@ -661,10 +661,6 @@ public final class IncomingMessageHandler {
                 final var aep = keysMessage.getAccountEntropyPool();
                 account.setAccountEntropyPool(aep);
                 actions.add(SyncStorageDataAction.create());
-            } else if (keysMessage.getMaster() != null) {
-                final var masterKey = keysMessage.getMaster();
-                account.setMasterKey(masterKey);
-                actions.add(SyncStorageDataAction.create());
             } else if (keysMessage.getStorageService() != null) {
                 final var storageKey = keysMessage.getStorageService();
                 account.setStorageKey(storageKey);
