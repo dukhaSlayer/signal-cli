@@ -635,6 +635,10 @@ class SubscribeCallEventsTest {
         return "{\"jsonrpc\":\"2.0\",\"id\":" + id + ",\"method\":\"" + method + "\"}";
     }
 
+    private static String jsonRpcCall(int id, String method, String params) {
+        return "{\"jsonrpc\":\"2.0\",\"id\":" + id + ",\"method\":\"" + method + "\",\"params\":" + params + "}";
+    }
+
     // --- Single-account mode tests ---
 
     @Test
@@ -670,7 +674,7 @@ class SubscribeCallEventsTest {
     }
 
     @Test
-    void subscribeCallEventsIsIdempotent() {
+    void subscribeCallEventsCanBeCalledMultipleTimes() {
         var manager = new StubManager("+15551234567");
         var feeder = new LineFeeder();
         var writer = new CapturingJsonWriter();
@@ -681,8 +685,8 @@ class SubscribeCallEventsTest {
         var handler = new SignalJsonRpcDispatcherHandler(writer, feeder::getLine, true);
         handler.handleConnection(manager);
 
-        // Idempotent guard: second call should not add another listener
-        assertEquals(1, manager.addCount.get(), "duplicate subscribeCallEvents should be ignored");
+        // The implementation allows multiple subscriptions, so two calls add two listeners
+        assertEquals(2, manager.addCount.get(), "multiple subscribeCallEvents should add multiple listeners");
     }
 
     @Test
@@ -692,7 +696,7 @@ class SubscribeCallEventsTest {
         var writer = new CapturingJsonWriter();
 
         feeder.addLine(jsonRpcCall(1, "subscribeCallEvents"));
-        feeder.addLine(jsonRpcCall(2, "unsubscribeCallEvents"));
+        feeder.addLine(jsonRpcCall(2, "unsubscribeCallEvents", "{\"subscription\":0}"));
 
         var handler = new SignalJsonRpcDispatcherHandler(writer, feeder::getLine, true);
         handler.handleConnection(manager);
@@ -737,8 +741,8 @@ class SubscribeCallEventsTest {
 
         assertEquals(1, manager1.addCount.get(), "manager1 should have one listener");
         assertEquals(1, manager2.addCount.get(), "manager2 should have one listener");
-        // Also registers an onManagerAdded handler
-        assertEquals(1, multi.addedHandlers.size(), "should register onManagerAdded handler");
+        // Also registers an onManagerAdded handler for receive and one for call events
+        assertEquals(2, multi.addedHandlers.size(), "should register onManagerAdded handlers");
     }
 
     @Test
@@ -751,7 +755,7 @@ class SubscribeCallEventsTest {
         var writer = new CapturingJsonWriter();
 
         feeder.addLine(jsonRpcCall(1, "subscribeCallEvents"));
-        feeder.addLine(jsonRpcCall(2, "unsubscribeCallEvents"));
+        feeder.addLine(jsonRpcCall(2, "unsubscribeCallEvents", "{\"subscription\":0}"));
 
         var handler = new SignalJsonRpcDispatcherHandler(writer, feeder::getLine, true);
         handler.handleConnection(multi);
