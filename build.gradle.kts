@@ -146,3 +146,17 @@ tasks.register("fatJar", type = Jar::class) {
     }
     with(tasks.jar.get())
 }
+
+tasks.register("writeLibsignalVersion") {
+    doLast {
+        val resolutionResult = configurations.runtimeClasspath.get().incoming.resolutionResult
+        val libsignalDep =
+            resolutionResult.allDependencies.find { dep -> dep.requested is ModuleComponentSelector && (dep.requested as ModuleComponentSelector).group == "org.signal" && (dep.requested as ModuleComponentSelector).moduleIdentifier.name == "libsignal-client" }
+        if (libsignalDep != null) {
+            val version = (libsignalDep.requested as ModuleComponentSelector).version
+            file("libsignal-version").writeText(version + "\n")
+        } else {
+            throw GradleException("Could not find libsignal-client dependency")
+        }
+    }
+}
