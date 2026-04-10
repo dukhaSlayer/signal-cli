@@ -131,7 +131,9 @@ public class SyncHelper {
 
             if (groupsFile.exists() && groupsFile.length() > 0) {
                 try (var groupsFileStream = new FileInputStream(groupsFile)) {
-                    final var uploadSpec = context.getDependencies().getMessageSender().getResumableUploadSpec();
+                    final var uploadSpec = context.getDependencies()
+                            .getMessageSender()
+                            .getResumableUploadSpec(groupsFile.length());
                     var attachmentStream = SignalServiceAttachment.newStreamBuilder()
                             .withStream(groupsFileStream)
                             .withContentType(MimeUtils.OCTET_STREAM)
@@ -190,7 +192,9 @@ public class SyncHelper {
 
             if (contactsFile.exists() && contactsFile.length() > 0) {
                 try (var contactsFileStream = new FileInputStream(contactsFile)) {
-                    final var uploadSpec = context.getDependencies().getMessageSender().getResumableUploadSpec();
+                    final var uploadSpec = context.getDependencies()
+                            .getMessageSender()
+                            .getResumableUploadSpec(contactsFile.length());
                     var attachmentStream = SignalServiceAttachment.newStreamBuilder()
                             .withStream(contactsFileStream)
                             .withContentType(MimeUtils.OCTET_STREAM)

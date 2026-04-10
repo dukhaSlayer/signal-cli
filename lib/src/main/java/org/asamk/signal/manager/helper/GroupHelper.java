@@ -123,7 +123,7 @@ public class GroupHelper {
             return Optional.empty();
         }
 
-        final var uploadSpec = dependencies.getMessageSender().getResumableUploadSpec();
+        final var uploadSpec = dependencies.getMessageSender().getResumableUploadSpec(streamDetails.getLength());
         return Optional.of(AttachmentUtils.createAttachmentStream(streamDetails, Optional.empty(), uploadSpec));
     }
 

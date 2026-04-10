@@ -6,6 +6,7 @@ import org.asamk.signal.manager.internal.SignalDependencies;
 import org.asamk.signal.manager.storage.AttachmentStore;
 import org.asamk.signal.manager.util.AttachmentUtils;
 import org.asamk.signal.manager.util.IOUtils;
+import org.asamk.signal.manager.util.Utils;
 import org.signal.libsignal.protocol.InvalidMessageException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +45,10 @@ public class AttachmentHelper {
         return attachmentStore.retrieveAttachment(id);
     }
 
-    public List<SignalServiceAttachment> uploadAttachments(final List<String> attachments, boolean voiceNote) throws AttachmentInvalidException, IOException {
+    public List<SignalServiceAttachment> uploadAttachments(
+            final List<String> attachments,
+            boolean voiceNote
+    ) throws AttachmentInvalidException, IOException {
         final var attachmentStreams = createAttachmentStreams(attachments, voiceNote);
 
         try {
@@ -65,21 +69,41 @@ public class AttachmentHelper {
         return uploadAttachments(attachments, false);
     }
 
-    private List<SignalServiceAttachmentStream> createAttachmentStreams(List<String> attachments, boolean voiceNote) throws AttachmentInvalidException, IOException {
+    private List<SignalServiceAttachmentStream> createAttachmentStreams(
+            List<String> attachments,
+            boolean voiceNote
+    ) throws AttachmentInvalidException, IOException {
         if (attachments == null) {
             return null;
         }
         final var signalServiceAttachments = new ArrayList<SignalServiceAttachmentStream>(attachments.size());
         for (var attachment : attachments) {
-            final var uploadSpec = dependencies.getMessageSender().getResumableUploadSpec();
-            signalServiceAttachments.add(AttachmentUtils.createAttachmentStream(attachment, voiceNote, uploadSpec));
+            final var attachmentStream = getAttachmentStream(attachment, voiceNote);
+            signalServiceAttachments.add(attachmentStream);
         }
         return signalServiceAttachments;
     }
 
+    private SignalServiceAttachmentStream getAttachmentStream(
+            final String attachment,
+            final boolean voiceNote
+    ) throws AttachmentInvalidException {
+        try {
+            final var streamDetails = Utils.createStreamDetails(attachment);
+            final var uploadSpec = dependencies.getMessageSender()
+                    .getResumableUploadSpec(streamDetails.first().getLength());
+
+            return AttachmentUtils.createAttachmentStream(streamDetails.first(),
+                    streamDetails.second(),
+                    voiceNote,
+                    uploadSpec);
+        } catch (IOException e) {
+            throw new AttachmentInvalidException(attachment, e);
+        }
+    }
+
     public SignalServiceAttachmentPointer uploadAttachment(String attachment) throws IOException, AttachmentInvalidException {
-        final var uploadSpec = dependencies.getMessageSender().getResumableUploadSpec();
-        var attachmentStream = AttachmentUtils.createAttachmentStream(attachment, uploadSpec);
+        final var attachmentStream = getAttachmentStream(attachment, false);
         return uploadAttachment(attachmentStream);
     }
 
