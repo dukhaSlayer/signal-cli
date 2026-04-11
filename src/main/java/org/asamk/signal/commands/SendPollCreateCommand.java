@@ -82,7 +82,11 @@ public class SendPollCreateCommand implements JsonRpcLocalCommand {
                 throw new UserErrorException("Poll options must not be empty");
             }
             if (option.length() > MAX_POLL_OPTION_LENGTH) {
-                throw new UserErrorException("Poll option \"" + option + "\" exceeds the maximum length of " + MAX_POLL_OPTION_LENGTH + " characters");
+                throw new UserErrorException("Poll option \""
+                        + option
+                        + "\" exceeds the maximum length of "
+                        + MAX_POLL_OPTION_LENGTH
+                        + " characters");
             }
         }
 

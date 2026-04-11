@@ -21,10 +21,7 @@ public class RejectCallCommand implements JsonRpcLocalCommand {
     @Override
     public void attachToSubparser(final Subparser subparser) {
         subparser.help("Reject an incoming voice call.");
-        subparser.addArgument("--call-id")
-                .type(long.class)
-                .required(true)
-                .help("The call ID to reject.");
+        subparser.addArgument("--call-id").type(long.class).required(true).help("The call ID to reject.");
     }
 
     @Override

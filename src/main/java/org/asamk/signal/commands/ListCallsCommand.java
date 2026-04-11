@@ -5,12 +5,9 @@ import net.sourceforge.argparse4j.inf.Subparser;
 
 import org.asamk.signal.commands.exceptions.CommandException;
 import org.asamk.signal.manager.Manager;
-import org.asamk.signal.manager.api.CallInfo;
 import org.asamk.signal.output.JsonWriter;
 import org.asamk.signal.output.OutputWriter;
 import org.asamk.signal.output.PlainTextWriter;
-
-import java.util.List;
 
 public class ListCallsCommand implements JsonRpcLocalCommand {
 

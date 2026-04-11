@@ -23,10 +23,7 @@ public class AcceptCallCommand implements JsonRpcLocalCommand {
     @Override
     public void attachToSubparser(final Subparser subparser) {
         subparser.help("Accept an incoming voice call.");
-        subparser.addArgument("--call-id")
-                .type(long.class)
-                .required(true)
-                .help("The call ID to accept.");
+        subparser.addArgument("--call-id").type(long.class).required(true).help("The call ID to accept.");
     }
 
     @Override

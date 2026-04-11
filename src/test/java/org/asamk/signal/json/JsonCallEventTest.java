@@ -2,10 +2,7 @@ package org.asamk.signal.json;
 
 import org.asamk.signal.manager.api.CallInfo;
 import org.asamk.signal.manager.api.RecipientAddress;
-
 import org.junit.jupiter.api.Test;
-
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -17,7 +14,12 @@ class JsonCallEventTest {
     @Test
     void fromWithNumberAndUuid() {
         var recipient = new RecipientAddress("a1b2c3d4-e5f6-7890-abcd-ef1234567890", null, "+15551234567", null);
-        var callInfo = new CallInfo(123L, CallInfo.State.CONNECTED, recipient, "signal_input_123", "signal_output_123", true);
+        var callInfo = new CallInfo(123L,
+                CallInfo.State.CONNECTED,
+                recipient,
+                "signal_input_123",
+                "signal_output_123",
+                true);
 
         var event = JsonCallEvent.from(callInfo, null);
 
@@ -34,7 +36,12 @@ class JsonCallEventTest {
     @Test
     void fromWithUuidOnly() {
         var recipient = new RecipientAddress("a1b2c3d4-e5f6-7890-abcd-ef1234567890", null, null, null);
-        var callInfo = new CallInfo(456L, CallInfo.State.RINGING_INCOMING, recipient, "signal_input_456", "signal_output_456", false);
+        var callInfo = new CallInfo(456L,
+                CallInfo.State.RINGING_INCOMING,
+                recipient,
+                "signal_input_456",
+                "signal_output_456",
+                false);
 
         var event = JsonCallEvent.from(callInfo, null);
 
@@ -48,7 +55,12 @@ class JsonCallEventTest {
     @Test
     void fromWithNumberOnly() {
         var recipient = new RecipientAddress(null, null, "+15559876543", null);
-        var callInfo = new CallInfo(789L, CallInfo.State.RINGING_OUTGOING, recipient, "signal_input_789", "signal_output_789", true);
+        var callInfo = new CallInfo(789L,
+                CallInfo.State.RINGING_OUTGOING,
+                recipient,
+                "signal_input_789",
+                "signal_output_789",
+                true);
 
         var event = JsonCallEvent.from(callInfo, null);
 
@@ -81,7 +93,12 @@ class JsonCallEventTest {
     @Test
     void fromConnectingState() {
         var recipient = new RecipientAddress("uuid-5678", null, "+15552222222", null);
-        var callInfo = new CallInfo(200L, CallInfo.State.CONNECTING, recipient, "signal_input_200", "signal_output_200", true);
+        var callInfo = new CallInfo(200L,
+                CallInfo.State.CONNECTING,
+                recipient,
+                "signal_input_200",
+                "signal_output_200",
+                true);
 
         var event = JsonCallEvent.from(callInfo, null);
 
@@ -97,8 +114,17 @@ class JsonCallEventTest {
     void fromWithVariousEndReasons() {
         var recipient = new RecipientAddress("uuid-1234", null, "+15551111111", null);
 
-        var reasons = new String[]{"local_hangup", "remote_hangup", "rejected", "remote_busy",
-                "ring_timeout", "ice_failed", "tunnel_exit", "tunnel_error", "shutdown"};
+        var reasons = new String[]{
+                "local_hangup",
+                "remote_hangup",
+                "rejected",
+                "remote_busy",
+                "ring_timeout",
+                "ice_failed",
+                "tunnel_exit",
+                "tunnel_error",
+                "shutdown"
+        };
 
         for (var reason : reasons) {
             var callInfo = new CallInfo(1L, CallInfo.State.ENDED, recipient, null, null, false);
