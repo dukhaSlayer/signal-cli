@@ -303,6 +303,7 @@ public class MessageSendLogStore implements AutoCloseable {
             }
             if (contentId == -1) {
                 logger.warn("Failed to insert message send log content");
+                connection.commit();
                 return -1;
             }
             insertRecipientsForExistingContent(contentId, recipientDevices, connection);

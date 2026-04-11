@@ -152,6 +152,7 @@ public class GroupStore {
                 statement.setBytes(2, groupId.serialize());
                 final var result = Utils.executeQueryForOptional(statement, Utils::getIdMapper);
                 if (result.isEmpty()) {
+                    connection.commit();
                     return;
                 }
                 internalId = result.get();
