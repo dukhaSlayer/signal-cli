@@ -726,7 +726,7 @@ public class GroupHelper {
                 result = sendUpdateGroupV2Message(group, groupGroupChangePair.first(), groupGroupChangePair.second());
             }
             final var newMembers = new HashSet<>(members);
-            newMembers.removeAll(group.getMembers());
+            newMembers.removeAll(group.getMemberRecipientIds());
             newMembers.removeAll(group.getRequestingMembers());
             if (!newMembers.isEmpty()) {
                 var groupGroupChangePair = groupV2Helper.addMembers(group, newMembers);
