@@ -28,6 +28,7 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,7 +51,7 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
 
     private final Map<Long, Long> recipientsMerged = new HashMap<>();
 
-    private final Map<ServiceId, RecipientWithAddress> recipientAddressCache = new HashMap<>();
+    private final Map<ServiceId, RecipientWithAddress> recipientAddressCache = Collections.synchronizedMap(new HashMap<>());
 
     public static void createSql(Connection connection) throws SQLException {
         // When modifying the CREATE statement here, also add a migration in AccountDatabase.java
