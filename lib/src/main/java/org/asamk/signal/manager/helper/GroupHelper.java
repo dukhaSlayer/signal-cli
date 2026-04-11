@@ -768,12 +768,8 @@ public class GroupHelper {
             newAdmins.retainAll(group.getMemberRecipientIds());
             newAdmins.removeAll(group.getAdminMemberRecipientIds());
             if (!newAdmins.isEmpty()) {
-                for (var admin : newAdmins) {
-                    var groupGroupChangePair = groupV2Helper.setMemberAdmin(group, admin, true);
-                    result = sendUpdateGroupV2Message(group,
-                            groupGroupChangePair.first(),
-                            groupGroupChangePair.second());
-                }
+                var groupGroupChangePair = groupV2Helper.setMemberAdmin(group, newAdmins, true);
+                result = sendUpdateGroupV2Message(group, groupGroupChangePair.first(), groupGroupChangePair.second());
             }
         }
 
@@ -781,12 +777,8 @@ public class GroupHelper {
             final var existingRemoveAdmins = new HashSet<>(removeAdmins);
             existingRemoveAdmins.retainAll(group.getAdminMemberRecipientIds());
             if (!existingRemoveAdmins.isEmpty()) {
-                for (var admin : existingRemoveAdmins) {
-                    var groupGroupChangePair = groupV2Helper.setMemberAdmin(group, admin, false);
-                    result = sendUpdateGroupV2Message(group,
-                            groupGroupChangePair.first(),
-                            groupGroupChangePair.second());
-                }
+                var groupGroupChangePair = groupV2Helper.setMemberAdmin(group, existingRemoveAdmins, false);
+                result = sendUpdateGroupV2Message(group, groupGroupChangePair.first(), groupGroupChangePair.second());
             }
         }
 
