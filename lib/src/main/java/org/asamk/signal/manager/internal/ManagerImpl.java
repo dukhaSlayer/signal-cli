@@ -839,8 +839,7 @@ public class ManagerImpl implements Manager {
                 final var streamDetails = new StreamDetails(new ByteArrayInputStream(messageBytes),
                         MimeUtils.LONG_TEXT,
                         messageBytes.length);
-                final var uploadSpec = dependencies.getMessageSender()
-                        .getResumableUploadSpec(streamDetails.getLength());
+                final var uploadSpec = context.getAttachmentHelper().getResumableUploadSpec(streamDetails);
                 final var textAttachment = AttachmentUtils.createAttachmentStream(streamDetails,
                         Optional.empty(),
                         uploadSpec);
@@ -908,7 +907,7 @@ public class ManagerImpl implements Manager {
             if (streamDetails == null) {
                 throw new InvalidStickerException("Missing local sticker file");
             }
-            final var uploadSpec = dependencies.getMessageSender().getResumableUploadSpec(streamDetails.getLength());
+            final var uploadSpec = context.getAttachmentHelper().getResumableUploadSpec(streamDetails);
             final var stickerAttachment = AttachmentUtils.createAttachmentStream(streamDetails,
                     Optional.empty(),
                     uploadSpec);

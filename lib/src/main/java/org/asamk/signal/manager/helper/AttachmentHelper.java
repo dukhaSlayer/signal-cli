@@ -11,11 +11,14 @@ import org.signal.libsignal.protocol.InvalidMessageException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.whispersystems.signalservice.api.crypto.AttachmentCipherInputStream;
+import org.whispersystems.signalservice.api.crypto.AttachmentCipherStreamUtil;
 import org.whispersystems.signalservice.api.messages.SignalServiceAttachment;
 import org.whispersystems.signalservice.api.messages.SignalServiceAttachmentPointer;
 import org.whispersystems.signalservice.api.messages.SignalServiceAttachmentStream;
 import org.whispersystems.signalservice.api.push.exceptions.MissingConfigurationException;
 import org.whispersystems.signalservice.api.util.StreamDetails;
+import org.whispersystems.signalservice.internal.crypto.PaddingInputStream;
+import org.whispersystems.signalservice.internal.push.http.ResumableUploadSpec;
 
 import java.io.File;
 import java.io.IOException;
@@ -89,17 +92,24 @@ public class AttachmentHelper {
             final boolean voiceNote
     ) throws AttachmentInvalidException {
         try {
-            final var streamDetails = Utils.createStreamDetails(attachment);
-            final var uploadSpec = dependencies.getMessageSender()
-                    .getResumableUploadSpec(streamDetails.first().getLength());
+            final var streamDetailsAndFileName = Utils.createStreamDetails(attachment);
+            final var streamDetails = streamDetailsAndFileName.first();
+            final var uploadSpec = getResumableUploadSpec(streamDetails);
 
-            return AttachmentUtils.createAttachmentStream(streamDetails.first(),
-                    streamDetails.second(),
+            return AttachmentUtils.createAttachmentStream(streamDetails,
+                    streamDetailsAndFileName.second(),
                     voiceNote,
                     uploadSpec);
         } catch (IOException e) {
             throw new AttachmentInvalidException(attachment, e);
         }
+    }
+
+    public ResumableUploadSpec getResumableUploadSpec(final StreamDetails streamDetails) throws IOException {
+        final var streamLength = streamDetails.getLength();
+        final var ciphertextLength = AttachmentCipherStreamUtil.getCiphertextLength(PaddingInputStream.getPaddedSize(
+                streamLength));
+        return dependencies.getMessageSender().getResumableUploadSpec(ciphertextLength);
     }
 
     public SignalServiceAttachmentPointer uploadAttachment(String attachment) throws IOException, AttachmentInvalidException {
