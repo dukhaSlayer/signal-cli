@@ -294,7 +294,7 @@ public class ManagerImpl implements Manager {
             final var profile = serviceId == null
                     ? null
                     : context.getProfileHelper()
-                            .getRecipientProfile(account.getRecipientResolver().resolveRecipient(serviceId));
+                      .getRecipientProfile(account.getRecipientResolver().resolveRecipient(serviceId));
             return new UserStatus(number.isEmpty() ? null : number,
                     serviceId == null ? null : serviceId.getRawUuid(),
                     profile != null
@@ -321,7 +321,7 @@ public class ManagerImpl implements Manager {
             final var profile = serviceId == null
                     ? null
                     : context.getProfileHelper()
-                            .getRecipientProfile(account.getRecipientResolver().resolveRecipient(serviceId));
+                      .getRecipientProfile(account.getRecipientResolver().resolveRecipient(serviceId));
             return new UsernameStatus(username,
                     serviceId == null ? null : serviceId.getRawUuid(),
                     profile != null
@@ -705,7 +705,10 @@ public class ManagerImpl implements Manager {
             )) {
                 final var result = notifySelf
                         ? context.getSendHelper()
-                        .sendMessage(messageBuilder, account.getSelfRecipientId(), editTargetTimestamp, urgent)
+                          .sendMessage(messageBuilder,
+                                  account.getSelfRecipientId(),
+                                  editTargetTimestamp,
+                                  urgent)
                         : context.getSendHelper().sendSelfMessage(messageBuilder, editTargetTimestamp);
                 results.put(recipient, List.of(toSendMessageResult(result)));
             } else if (recipient instanceof RecipientIdentifier.Single single) {
@@ -844,10 +847,10 @@ public class ManagerImpl implements Manager {
             final var remainder = result.getSecond();
             if (remainder != null) {
                 final var messageBytes = message.messageText().getBytes(StandardCharsets.UTF_8);
-                final var uploadSpec = dependencies.getMessageSender().getResumableUploadSpec();
                 final var streamDetails = new StreamDetails(new ByteArrayInputStream(messageBytes),
                         MimeUtils.LONG_TEXT,
                         messageBytes.length);
+                final var uploadSpec = context.getAttachmentHelper().getResumableUploadSpec(streamDetails);
                 final var textAttachment = AttachmentUtils.createAttachmentStream(streamDetails,
                         Optional.empty(),
                         uploadSpec);
@@ -917,7 +920,7 @@ public class ManagerImpl implements Manager {
             if (streamDetails == null) {
                 throw new InvalidStickerException("Missing local sticker file");
             }
-            final var uploadSpec = dependencies.getMessageSender().getResumableUploadSpec();
+            final var uploadSpec = context.getAttachmentHelper().getResumableUploadSpec(streamDetails);
             final var stickerAttachment = AttachmentUtils.createAttachmentStream(streamDetails,
                     Optional.empty(),
                     uploadSpec);
@@ -931,7 +934,7 @@ public class ManagerImpl implements Manager {
             final var previews = new ArrayList<SignalServicePreview>(message.previews().size());
             for (final var p : message.previews()) {
                 final var image = p.image().isPresent() ? context.getAttachmentHelper()
-                        .uploadAttachment(p.image().get()) : null;
+                                                          .uploadAttachment(p.image().get()) : null;
                 previews.add(new SignalServicePreview(p.url(),
                         p.title(),
                         p.description(),

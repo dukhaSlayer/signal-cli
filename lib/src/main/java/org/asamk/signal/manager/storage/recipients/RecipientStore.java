@@ -28,6 +28,7 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,7 +51,7 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
 
     private final Map<Long, Long> recipientsMerged = new HashMap<>();
 
-    private final Map<ServiceId, RecipientWithAddress> recipientAddressCache = new HashMap<>();
+    private final Map<ServiceId, RecipientWithAddress> recipientAddressCache = Collections.synchronizedMap(new HashMap<>());
 
     public static void createSql(Connection connection) throws SQLException {
         // When modifying the CREATE statement here, also add a migration in AccountDatabase.java
@@ -184,12 +185,12 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
 
     @Override
     public RecipientId resolveRecipient(final ServiceId serviceId) {
+        final var recipientWithAddress = recipientAddressCache.get(serviceId);
+        if (recipientWithAddress != null) {
+            return recipientWithAddress.id();
+        }
         try (final var connection = database.getConnection()) {
             connection.setAutoCommit(false);
-            final var recipientWithAddress = recipientAddressCache.get(serviceId);
-            if (recipientWithAddress != null) {
-                return recipientWithAddress.id();
-            }
             final var recipientId = resolveRecipientLocked(connection, serviceId);
             connection.commit();
             return recipientId;
@@ -1605,9 +1606,9 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
                 profileCapabilities == null
                         ? Set.of()
                         : Arrays.stream(profileCapabilities.split(","))
-                                .map(Profile.Capability::valueOfOrNull)
-                                .filter(Objects::nonNull)
-                                .collect(Collectors.toSet()),
+                          .map(Profile.Capability::valueOfOrNull)
+                          .filter(Objects::nonNull)
+                          .collect(Collectors.toSet()),
                 PhoneNumberSharingMode.valueOfOrNull(resultSet.getString("profile_phone_number_sharing")));
     }
 

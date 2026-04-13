@@ -21,10 +21,7 @@ public class HangupCallCommand implements JsonRpcLocalCommand {
     @Override
     public void attachToSubparser(final Subparser subparser) {
         subparser.help("Hang up an active voice call.");
-        subparser.addArgument("--call-id")
-                .type(long.class)
-                .required(true)
-                .help("The call ID to hang up.");
+        subparser.addArgument("--call-id").type(long.class).required(true).help("The call ID to hang up.");
     }
 
     @Override

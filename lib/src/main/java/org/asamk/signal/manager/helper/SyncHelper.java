@@ -38,6 +38,7 @@ import org.whispersystems.signalservice.api.messages.multidevice.StickerPackOper
 import org.whispersystems.signalservice.api.messages.multidevice.VerifiedMessage;
 import org.whispersystems.signalservice.api.messages.multidevice.ViewedMessage;
 import org.whispersystems.signalservice.api.push.SignalServiceAddress;
+import org.whispersystems.signalservice.api.util.StreamDetails;
 import org.whispersystems.signalservice.internal.push.SyncMessage;
 
 import java.io.FileInputStream;
@@ -131,11 +132,14 @@ public class SyncHelper {
 
             if (groupsFile.exists() && groupsFile.length() > 0) {
                 try (var groupsFileStream = new FileInputStream(groupsFile)) {
-                    final var uploadSpec = context.getDependencies().getMessageSender().getResumableUploadSpec();
+                    final var streamDetails = new StreamDetails(groupsFileStream,
+                            MimeUtils.OCTET_STREAM,
+                            groupsFile.length());
+                    final var uploadSpec = context.getAttachmentHelper().getResumableUploadSpec(streamDetails);
                     var attachmentStream = SignalServiceAttachment.newStreamBuilder()
-                            .withStream(groupsFileStream)
-                            .withContentType(MimeUtils.OCTET_STREAM)
-                            .withLength(groupsFile.length())
+                            .withStream(streamDetails.getStream())
+                            .withContentType(streamDetails.getContentType())
+                            .withLength(streamDetails.getLength())
                             .withResumableUploadSpec(uploadSpec)
                             .build();
 
@@ -190,11 +194,14 @@ public class SyncHelper {
 
             if (contactsFile.exists() && contactsFile.length() > 0) {
                 try (var contactsFileStream = new FileInputStream(contactsFile)) {
-                    final var uploadSpec = context.getDependencies().getMessageSender().getResumableUploadSpec();
+                    final var streamDetails = new StreamDetails(contactsFileStream,
+                            MimeUtils.OCTET_STREAM,
+                            contactsFile.length());
+                    final var uploadSpec = context.getAttachmentHelper().getResumableUploadSpec(streamDetails);
                     var attachmentStream = SignalServiceAttachment.newStreamBuilder()
-                            .withStream(contactsFileStream)
-                            .withContentType(MimeUtils.OCTET_STREAM)
-                            .withLength(contactsFile.length())
+                            .withStream(streamDetails.getStream())
+                            .withContentType(streamDetails.getContentType())
+                            .withLength(streamDetails.getLength())
                             .withResumableUploadSpec(uploadSpec)
                             .build();
 

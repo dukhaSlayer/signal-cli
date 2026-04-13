@@ -194,8 +194,9 @@ public class SessionStore implements SignalServiceSessionStore {
             if (session != null) {
                 session.archiveCurrentState();
                 storeSession(connection, key, session);
-                connection.commit();
+
             }
+            connection.commit();
         } catch (SQLException e) {
             throw new RuntimeException("Failed update session store", e);
         }

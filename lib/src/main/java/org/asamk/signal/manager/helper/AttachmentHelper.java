@@ -6,15 +6,19 @@ import org.asamk.signal.manager.internal.SignalDependencies;
 import org.asamk.signal.manager.storage.AttachmentStore;
 import org.asamk.signal.manager.util.AttachmentUtils;
 import org.asamk.signal.manager.util.IOUtils;
+import org.asamk.signal.manager.util.Utils;
 import org.signal.libsignal.protocol.InvalidMessageException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.whispersystems.signalservice.api.crypto.AttachmentCipherInputStream;
+import org.whispersystems.signalservice.api.crypto.AttachmentCipherStreamUtil;
 import org.whispersystems.signalservice.api.messages.SignalServiceAttachment;
 import org.whispersystems.signalservice.api.messages.SignalServiceAttachmentPointer;
 import org.whispersystems.signalservice.api.messages.SignalServiceAttachmentStream;
 import org.whispersystems.signalservice.api.push.exceptions.MissingConfigurationException;
 import org.whispersystems.signalservice.api.util.StreamDetails;
+import org.whispersystems.signalservice.internal.crypto.PaddingInputStream;
+import org.whispersystems.signalservice.internal.push.http.ResumableUploadSpec;
 
 import java.io.File;
 import java.io.IOException;
@@ -44,7 +48,10 @@ public class AttachmentHelper {
         return attachmentStore.retrieveAttachment(id);
     }
 
-    public List<SignalServiceAttachment> uploadAttachments(final List<String> attachments, boolean voiceNote) throws AttachmentInvalidException, IOException {
+    public List<SignalServiceAttachment> uploadAttachments(
+            final List<String> attachments,
+            boolean voiceNote
+    ) throws AttachmentInvalidException, IOException {
         final var attachmentStreams = createAttachmentStreams(attachments, voiceNote);
 
         try {
@@ -65,21 +72,48 @@ public class AttachmentHelper {
         return uploadAttachments(attachments, false);
     }
 
-    private List<SignalServiceAttachmentStream> createAttachmentStreams(List<String> attachments, boolean voiceNote) throws AttachmentInvalidException, IOException {
+    private List<SignalServiceAttachmentStream> createAttachmentStreams(
+            List<String> attachments,
+            boolean voiceNote
+    ) throws AttachmentInvalidException, IOException {
         if (attachments == null) {
             return null;
         }
         final var signalServiceAttachments = new ArrayList<SignalServiceAttachmentStream>(attachments.size());
         for (var attachment : attachments) {
-            final var uploadSpec = dependencies.getMessageSender().getResumableUploadSpec();
-            signalServiceAttachments.add(AttachmentUtils.createAttachmentStream(attachment, voiceNote, uploadSpec));
+            final var attachmentStream = getAttachmentStream(attachment, voiceNote);
+            signalServiceAttachments.add(attachmentStream);
         }
         return signalServiceAttachments;
     }
 
+    private SignalServiceAttachmentStream getAttachmentStream(
+            final String attachment,
+            final boolean voiceNote
+    ) throws AttachmentInvalidException {
+        try {
+            final var streamDetailsAndFileName = Utils.createStreamDetails(attachment);
+            final var streamDetails = streamDetailsAndFileName.first();
+            final var uploadSpec = getResumableUploadSpec(streamDetails);
+
+            return AttachmentUtils.createAttachmentStream(streamDetails,
+                    streamDetailsAndFileName.second(),
+                    voiceNote,
+                    uploadSpec);
+        } catch (IOException e) {
+            throw new AttachmentInvalidException(attachment, e);
+        }
+    }
+
+    public ResumableUploadSpec getResumableUploadSpec(final StreamDetails streamDetails) throws IOException {
+        final var streamLength = streamDetails.getLength();
+        final var ciphertextLength = AttachmentCipherStreamUtil.getCiphertextLength(PaddingInputStream.getPaddedSize(
+                streamLength));
+        return dependencies.getMessageSender().getResumableUploadSpec(ciphertextLength);
+    }
+
     public SignalServiceAttachmentPointer uploadAttachment(String attachment) throws IOException, AttachmentInvalidException {
-        final var uploadSpec = dependencies.getMessageSender().getResumableUploadSpec();
-        var attachmentStream = AttachmentUtils.createAttachmentStream(attachment, uploadSpec);
+        final var attachmentStream = getAttachmentStream(attachment, false);
         return uploadAttachment(attachmentStream);
     }
 

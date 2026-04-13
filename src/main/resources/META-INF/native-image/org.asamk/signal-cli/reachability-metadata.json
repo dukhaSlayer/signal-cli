@@ -1487,6 +1487,13 @@
       "jniAccessible": true,
       "methods": [
         {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Object",
+            "java.lang.Object"
+          ]
+        },
+        {
           "name": "getFirst",
           "parameterTypes": []
         },
@@ -1495,6 +1502,9 @@
           "parameterTypes": []
         }
       ]
+    },
+    {
+      "type": "kotlin.Pair[]"
     },
     {
       "type": "kotlin.SafePublicationLazyImpl",
@@ -5816,6 +5826,21 @@
         {
           "name": "<init>",
           "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.signal.libsignal.net.UploadForm",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "fromNative",
+          "parameterTypes": [
+            "int",
+            "java.lang.String",
+            "java.lang.Object[]",
             "java.lang.String"
           ]
         }

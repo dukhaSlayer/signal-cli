@@ -501,18 +501,25 @@ class GroupV2Helper {
 
     Pair<DecryptedGroup, GroupChangeResponse> setMemberAdmin(
             GroupInfoV2 groupInfoV2,
-            RecipientId recipientId,
+            Set<RecipientId> recipientIds,
             boolean admin
     ) throws IOException {
         final GroupsV2Operations.GroupOperations groupOperations = getGroupOperations(groupInfoV2);
-        final var address = context.getRecipientHelper().resolveSignalServiceAddress(recipientId);
         final var newRole = admin ? Member.Role.ADMINISTRATOR : Member.Role.DEFAULT;
-        if (address.getServiceId() instanceof ACI aci) {
-            final var change = groupOperations.createChangeMemberRole(aci, newRole);
-            return commitChange(groupInfoV2, change);
-        } else {
+        final var change = new GroupChange.Actions.Builder();
+        final var memberRoles = recipientIds.stream()
+                .map(context.getRecipientHelper()::resolveSignalServiceAddress)
+                .map(SignalServiceAddress::getServiceId)
+                .filter(m -> m instanceof ACI)
+                .map(m -> (ACI) m)
+                .map(aci -> new GroupChange.Actions.ModifyMemberRoleAction.Builder().userId(groupOperations.encryptServiceId(
+                        aci)).role(newRole).build())
+                .toList();
+        if (memberRoles.size() < recipientIds.size()) {
             throw new IllegalArgumentException("Can't make a PNI a group admin.");
         }
+        change.modifyMemberRoles(memberRoles);
+        return commitChange(groupInfoV2, change);
     }
 
     Pair<DecryptedGroup, GroupChangeResponse> setMessageExpirationTimer(

@@ -1,37 +1,14 @@
 package org.asamk.signal.manager.util;
 
-import org.asamk.signal.manager.api.AttachmentInvalidException;
 import org.whispersystems.signalservice.api.messages.SignalServiceAttachmentStream;
 import org.whispersystems.signalservice.api.push.exceptions.ResumeLocationInvalidException;
 import org.whispersystems.signalservice.api.util.StreamDetails;
 import org.whispersystems.signalservice.internal.push.http.ResumableUploadSpec;
 
-import java.io.IOException;
 import java.util.Optional;
 import java.util.UUID;
 
 public class AttachmentUtils {
-
-    public static SignalServiceAttachmentStream createAttachmentStream(
-            String attachment,
-            boolean voiceNote,
-            ResumableUploadSpec resumableUploadSpec
-    ) throws AttachmentInvalidException {
-        try {
-            final var streamDetails = Utils.createStreamDetails(attachment);
-
-            return createAttachmentStream(streamDetails.first(), streamDetails.second(), voiceNote, resumableUploadSpec);
-        } catch (IOException e) {
-            throw new AttachmentInvalidException(attachment, e);
-        }
-    }
-
-    public static SignalServiceAttachmentStream createAttachmentStream(
-            String attachment,
-            ResumableUploadSpec resumableUploadSpec
-    ) throws AttachmentInvalidException {
-        return createAttachmentStream(attachment, false, resumableUploadSpec);
-    }
 
     public static SignalServiceAttachmentStream createAttachmentStream(
             StreamDetails streamDetails,

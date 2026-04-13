@@ -152,6 +152,7 @@ public class GroupStore {
                 statement.setBytes(2, groupId.serialize());
                 final var result = Utils.executeQueryForOptional(statement, Utils::getIdMapper);
                 if (result.isEmpty()) {
+                    connection.commit();
                     return;
                 }
                 internalId = result.get();
@@ -876,9 +877,9 @@ public class GroupStore {
         final var members = membersString == null
                 ? Set.<RecipientId>of()
                 : Arrays.stream(membersString.split(","))
-                        .map(Integer::valueOf)
-                        .map(recipientIdCreator::create)
-                        .collect(Collectors.toSet());
+                  .map(Integer::valueOf)
+                  .map(recipientIdCreator::create)
+                  .collect(Collectors.toSet());
         final var expirationTime = resultSet.getInt("expiration_time");
         final var blocked = resultSet.getBoolean("blocked");
         final var archived = resultSet.getBoolean("archived");
