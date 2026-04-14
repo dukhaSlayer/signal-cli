@@ -301,7 +301,7 @@ public class SignalDependencies {
                     getLibSignalNetwork(),
                     credentialsProvider,
                     allowStories,
-                    healthMonitor), () -> true, timer, TimeUnit.SECONDS.toMillis(10));
+                    healthMonitor), () -> true, timer, TimeUnit.SECONDS.toMillis(30));
             healthMonitor.monitor(authenticatedSignalWebSocket);
         });
     }
@@ -316,7 +316,7 @@ public class SignalDependencies {
                     getLibSignalNetwork(),
                     null,
                     allowStories,
-                    healthMonitor), () -> true, timer, TimeUnit.SECONDS.toMillis(10));
+                    healthMonitor), () -> true, timer, TimeUnit.SECONDS.toMillis(30));
             healthMonitor.monitor(unauthenticatedSignalWebSocket);
         });
     }
