@@ -204,7 +204,7 @@ public class SenderKeySharedStore {
         ).formatted(TABLE_SENDER_KEY_SHARED);
         try (final var statement = connection.prepareStatement(sql)) {
             for (final var entry : newEntries) {
-                statement.setString(1, entry.toString());
+                statement.setString(1, entry.address());
                 statement.setInt(2, entry.deviceId());
                 statement.setBytes(3, UuidUtil.toByteArray(distributionId.asUuid()));
                 statement.setLong(4, System.currentTimeMillis());
