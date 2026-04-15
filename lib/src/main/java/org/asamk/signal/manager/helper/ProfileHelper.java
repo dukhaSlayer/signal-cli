@@ -134,7 +134,9 @@ public final class ProfileHelper {
                     SignalServiceProfile.RequestType.PROFILE_AND_CREDENTIAL,
                     false));
         } catch (IOException e) {
-            logger.warn("Failed to retrieve profile key credential, ignoring: {}", e.getMessage());
+            logger.warn("Failed to retrieve profile key credential for {}, ignoring: {}",
+                    context.getRecipientHelper().resolveSignalServiceAddress(recipientId).getIdentifier(),
+                    e.getMessage());
             return null;
         }
 
@@ -263,7 +265,9 @@ public final class ProfileHelper {
         try {
             blockingGetProfile(retrieveProfile(recipientId, SignalServiceProfile.RequestType.PROFILE, false));
         } catch (IOException e) {
-            logger.warn("Failed to retrieve profile, ignoring: {}", e.getMessage());
+            logger.warn("Failed to retrieve profile for {}, ignoring: {}",
+                    context.getRecipientHelper().resolveSignalServiceAddress(recipientId).getIdentifier(),
+                    e.getMessage());
         }
 
         return account.getProfileStore().getProfile(recipientId);
@@ -381,7 +385,9 @@ public final class ProfileHelper {
 
             logger.trace("Done handling retrieved profile");
         }).doOnError(e -> {
-            logger.warn("Failed to retrieve profile, ignoring: {}", e.getMessage());
+            logger.warn("Failed to retrieve profile for {}, ignoring: {}",
+                    context.getRecipientHelper().resolveSignalServiceAddress(recipientId).getIdentifier(),
+                    e.getMessage());
             final var profile = account.getProfileStore().getProfile(recipientId);
             final var newProfile = (
                     profile == null ? Profile.newBuilder() : Profile.newBuilder(profile)
