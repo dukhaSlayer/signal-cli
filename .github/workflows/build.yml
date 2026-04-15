@@ -1,0 +1,57 @@
+name: build
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+  workflow_call:
+
+permissions: {}
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        # The "reproducible" entry is used to build the project with the LTS Java version used in reproducible builds script.
+        # More Java versions can be added to test compatibility, eg. "26".
+        java: ["reproducible", "26"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build
+        run: |
+          if [ "${{ matrix.java }}" != "reproducible" ]; then
+            export OVERRIDE_JAVA_VERSION="${{ matrix.java }}"
+          fi
+          ./reproducible-builds/build.sh
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: signal-cli-${{ matrix.java }}-${{ github.job }}
+          path: dist/*
+
+  build-client:
+    strategy:
+      matrix:
+        os:
+          - ubuntu
+          - macos
+          - windows
+    runs-on: ${{ matrix.os }}-latest
+    defaults:
+      run:
+        working-directory: ./client
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install rust
+        run: rustup default stable
+      - name: Build client
+        run: cargo build --release --verbose
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: signal-cli-client-${{ matrix.os }}
+          path: |
+            client/target/release/signal-cli-client
+            client/target/release/signal-cli-client.exe
