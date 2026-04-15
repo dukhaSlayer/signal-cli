@@ -2,6 +2,7 @@ package org.asamk.signal.manager.api;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public record SendMessageResults(long timestamp, Map<RecipientIdentifier, List<SendMessageResult>> results) {
 
@@ -28,15 +29,15 @@ public record SendMessageResults(long timestamp, Map<RecipientIdentifier, List<S
     }
 
     /**
-     * Longest rate-limit retry-after window across all rate-limited recipients, in seconds.
+     * Longest rate-limit retry-after window across all rate-limited recipients, in milliseconds.
      * Null when no recipient reported one (server omitted Retry-After, or no rate-limit failures).
      */
-    public Long maxRateLimitRetryAfterSeconds() {
+    public Long maxRateLimitRetryAfterMilliseconds() {
         return results.values()
                 .stream()
                 .flatMap(List::stream)
-                .map(SendMessageResult::rateLimitRetryAfterSeconds)
-                .filter(r -> r != null)
+                .map(SendMessageResult::rateLimitRetryAfterMilliseconds)
+                .filter(Objects::nonNull)
                 .max(Long::compareTo)
                 .orElse(null);
     }

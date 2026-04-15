@@ -2,14 +2,18 @@ package org.asamk.signal.manager.api;
 
 public class RateLimitException extends Exception {
 
-    private final long nextAttemptTimestamp;
+    private final Long retryAfterMilliseconds;
 
-    public RateLimitException(final long nextAttemptTimestamp) {
+    public RateLimitException(final Long retryAfterMilliseconds) {
         super("Rate limit");
-        this.nextAttemptTimestamp = nextAttemptTimestamp;
+        this.retryAfterMilliseconds = retryAfterMilliseconds;
     }
 
-    public long getNextAttemptTimestamp() {
-        return nextAttemptTimestamp;
+    public static RateLimitException from(org.whispersystems.signalservice.api.push.exceptions.RateLimitException e) {
+        return new RateLimitException(e.getRetryAfterMilliseconds().orElse(null));
+    }
+
+    public Long getRetryAfterMilliseconds() {
+        return retryAfterMilliseconds;
     }
 }

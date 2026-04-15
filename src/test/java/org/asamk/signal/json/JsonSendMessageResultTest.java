@@ -1,5 +1,6 @@
 package org.asamk.signal.json;
 
+import org.asamk.signal.manager.api.RateLimitException;
 import org.asamk.signal.manager.api.RecipientAddress;
 import org.asamk.signal.manager.api.RecipientIdentifier;
 import org.asamk.signal.manager.api.SendMessageResult;
@@ -20,11 +21,13 @@ class JsonSendMessageResultTest {
     @Test
     void rateLimitFailureSurfacesRetryAfterSeconds() {
         var result = new SendMessageResult(ADDRESS,
-                false, false, false, false,
-                true,
-                null,
                 false,
-                3600L);
+                false,
+                false,
+                false,
+                new RateLimitException(3600_000L),
+                null,
+                false);
 
         var json = JsonSendMessageResult.from(result);
 
@@ -36,11 +39,13 @@ class JsonSendMessageResultTest {
     @Test
     void rateLimitFailureWithoutRetryAfterLeavesFieldNull() {
         var result = new SendMessageResult(ADDRESS,
-                false, false, false, false,
-                true,
-                null,
                 false,
-                null);
+                false,
+                false,
+                false,
+                new RateLimitException(null),
+                null,
+                false);
 
         var json = JsonSendMessageResult.from(result);
 
@@ -50,12 +55,7 @@ class JsonSendMessageResultTest {
 
     @Test
     void successLeavesRetryAfterNull() {
-        var result = new SendMessageResult(ADDRESS,
-                true, false, false, false,
-                false,
-                null,
-                false,
-                null);
+        var result = new SendMessageResult(ADDRESS, true, false, false, false, null, null, false);
 
         var json = JsonSendMessageResult.from(result);
 
@@ -72,16 +72,15 @@ class JsonSendMessageResultTest {
         var aggregate = new SendMessageResults(1L,
                 Map.of(new RecipientIdentifier.Uuid(UUID.randomUUID()), List.of(small, big, unknown)));
 
-        assertEquals(3600L, aggregate.maxRateLimitRetryAfterSeconds());
+        assertEquals(3600L, aggregate.maxRateLimitRetryAfterMilliseconds());
     }
 
     @Test
     void aggregateReturnsNullWhenNoRetryAfter() {
         var aggregate = new SendMessageResults(1L,
-                Map.of(new RecipientIdentifier.Uuid(UUID.randomUUID()),
-                        List.of(rateLimited("+15551234567", null))));
+                Map.of(new RecipientIdentifier.Uuid(UUID.randomUUID()), List.of(rateLimited("+15551234567", null))));
 
-        assertNull(aggregate.maxRateLimitRetryAfterSeconds());
+        assertNull(aggregate.maxRateLimitRetryAfterMilliseconds());
     }
 
     /**
@@ -99,15 +98,17 @@ class JsonSendMessageResultTest {
                 Map.of(new RecipientIdentifier.Uuid(UUID.randomUUID()),
                         List.of(withoutValue, withValue, alsoWithValue)));
 
-        assertEquals(7200L, aggregate.maxRateLimitRetryAfterSeconds());
+        assertEquals(7200L, aggregate.maxRateLimitRetryAfterMilliseconds());
     }
 
     private static SendMessageResult rateLimited(String number, Long retryAfterSeconds) {
         return new SendMessageResult(new RecipientAddress(null, null, number, null),
-                false, false, false, false,
-                true,
-                null,
                 false,
-                retryAfterSeconds);
+                false,
+                false,
+                false,
+                new RateLimitException(retryAfterSeconds),
+                null,
+                false);
     }
 }

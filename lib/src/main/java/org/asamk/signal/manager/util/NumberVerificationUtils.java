@@ -65,14 +65,12 @@ public class NumberVerificationUtils {
         if (nextAttempt == null) {
             throw new VerificationMethodNotAvailableException();
         } else if (nextAttempt > 0) {
-            final var timestamp = sessionResponse.getClientReceivedAtMilliseconds() + nextAttempt * 1000;
-            throw new RateLimitException(timestamp);
+            throw new RateLimitException(nextAttempt * 1000L);
         }
 
         final var nextVerificationAttempt = sessionResponse.getMetadata().getNextVerificationAttempt();
         if (nextVerificationAttempt != null && nextVerificationAttempt > 0) {
-            final var timestamp = sessionResponse.getClientReceivedAtMilliseconds() + nextVerificationAttempt * 1000;
-            throw new CaptchaRequiredException(timestamp);
+            throw new CaptchaRequiredException(nextVerificationAttempt * 1000L);
         }
 
         if (sessionResponse.getMetadata().getRequestedInformation().contains("captcha")) {

@@ -129,16 +129,19 @@ public class CommandUtil {
         } else {
             message = "Invalid captcha given.";
         }
-        if (e.getNextAttemptTimestamp() > 0) {
-            message += "\nNext Captcha may be provided at " + DateUtils.formatTimestamp(e.getNextAttemptTimestamp());
+        if (e.getNextVerificationAttemptMilliseconds() > 0) {
+            message += "\nNext Captcha may be provided at " + DateUtils.formatTimestamp(System.currentTimeMillis()
+                    + e.getNextVerificationAttemptMilliseconds());
         }
         return message;
     }
 
     public static String getRateLimitMessage(final RateLimitException e) {
         String message = "Rate limit reached";
-        if (e.getNextAttemptTimestamp() > 0) {
-            message += "\nNext attempt may be tried at " + DateUtils.formatTimestamp(e.getNextAttemptTimestamp());
+        final var retryAfterMilliseconds = e.getRetryAfterMilliseconds();
+        if (retryAfterMilliseconds != null) {
+            message += "\nNext attempt may be tried at " + DateUtils.formatTimestamp(System.currentTimeMillis()
+                    + retryAfterMilliseconds);
         }
         return message;
     }

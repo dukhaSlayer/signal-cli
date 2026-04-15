@@ -2,11 +2,11 @@ package org.asamk.signal.manager.api;
 
 public class CaptchaRequiredException extends Exception {
 
-    private long nextAttemptTimestamp;
+    private long nextVerificationAttemptMilliseconds;
 
-    public CaptchaRequiredException(final long nextAttemptTimestamp) {
+    public CaptchaRequiredException(final long nextVerificationAttemptMilliseconds) {
         super("Captcha required");
-        this.nextAttemptTimestamp = nextAttemptTimestamp;
+        this.nextVerificationAttemptMilliseconds = nextVerificationAttemptMilliseconds;
     }
 
     public CaptchaRequiredException(final String message) {
@@ -17,7 +17,7 @@ public class CaptchaRequiredException extends Exception {
         super(message, cause);
     }
 
-    public long getNextAttemptTimestamp() {
-        return nextAttemptTimestamp;
+    public long getNextVerificationAttemptMilliseconds() {
+        return nextVerificationAttemptMilliseconds;
     }
 }

@@ -20,6 +20,7 @@ public record JsonSendMessageResult(
     }
 
     public static JsonSendMessageResult from(SendMessageResult result, GroupId groupId) {
+        final var rateLimitRetryAfterMilliseconds = result.rateLimitRetryAfterMilliseconds();
         return new JsonSendMessageResult(JsonRecipientAddress.from(result.address()),
                 groupId != null ? groupId.toBase64() : null,
                 result.isSuccess()
@@ -34,7 +35,7 @@ public record JsonSendMessageResult(
                                                   ? Type.INVALID_PRE_KEY_FAILURE
                                                         : Type.IDENTITY_FAILURE,
                 result.proofRequiredFailure() != null ? result.proofRequiredFailure().getToken() : null,
-                result.rateLimitRetryAfterSeconds());
+                rateLimitRetryAfterMilliseconds == null ? null : Math.ceilDiv(rateLimitRetryAfterMilliseconds, 1000L));
     }
 
     public enum Type {

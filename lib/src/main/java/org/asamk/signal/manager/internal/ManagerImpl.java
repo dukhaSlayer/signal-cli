@@ -278,7 +278,7 @@ public class ManagerImpl implements Manager {
             registeredUsers = context.getRecipientHelper().getRegisteredUsers(canonicalizedNumbersSet);
         } catch (CdsiResourceExhaustedException e) {
             logger.debug("CDSI resource exhausted: {}", e.getMessage());
-            throw new RateLimitException(System.currentTimeMillis() + e.getRetryAfterSeconds() * 1000L);
+            throw new RateLimitException(e.getRetryAfterSeconds() * 1000L);
         }
 
         return numbers.stream().collect(Collectors.toMap(n -> n, n -> {
