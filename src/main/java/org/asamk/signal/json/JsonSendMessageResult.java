@@ -32,7 +32,7 @@ public record JsonSendMessageResult(
                                                   ? Type.INVALID_PRE_KEY_FAILURE
                                                         : Type.IDENTITY_FAILURE,
                 result.proofRequiredFailure() != null ? result.proofRequiredFailure().getToken() : null,
-                result.proofRequiredFailure() != null ? result.proofRequiredFailure().getRetryAfterSeconds() : null);
+                result.rateLimitRetryAfterSeconds());
     }
 
     public enum Type {
