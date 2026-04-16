@@ -197,11 +197,6 @@ public class CallManager implements AutoCloseable {
         if (callEventListeners.isEmpty()) {
             logger.debug("Ignoring incoming offer for call {}: no call event listeners registered",
                     callIdUnsigned(callId));
-
-            final var result = sendBusyMessage(callId, recipientId, deviceId);
-            if (!result.isSuccess()) {
-                logger.warn("Failed to send busy for unhandled call {}", callIdUnsigned(callId));
-            }
             return;
         }
 
