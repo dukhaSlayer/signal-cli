@@ -1630,6 +1630,9 @@
       ]
     },
     {
+      "type": "kotlinx.coroutines.CancelledContinuation"
+    },
+    {
       "type": "kotlinx.coroutines.CompletedExceptionally",
       "fields": [
         {
@@ -1685,6 +1688,9 @@
       ]
     },
     {
+      "type": "kotlinx.coroutines.internal.LimitedDispatcher"
+    },
+    {
       "type": "kotlinx.coroutines.internal.LockFreeLinkedListNode",
       "fields": [
         {
@@ -1718,6 +1724,9 @@
       ]
     },
     {
+      "type": "kotlinx.coroutines.internal.ThreadSafeHeap"
+    },
+    {
       "type": "kotlinx.coroutines.scheduling.CoroutineScheduler",
       "fields": [
         {
@@ -1730,6 +1739,12 @@
           "name": "parkedWorkersStack$volatile"
         }
       ]
+    },
+    {
+      "type": "kotlinx.coroutines.scheduling.CoroutineScheduler$Worker"
+    },
+    {
+      "type": "kotlinx.coroutines.scheduling.WorkQueue"
     },
     {
       "type": "libcore.io.Memory"
@@ -4894,6 +4909,15 @@
     },
     {
       "type": "org.bouncycastle.jcajce.provider.kdf.PBEPBKDF2$Mappings",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.bouncycastle.jcajce.provider.kdf.PBKDF2$Mappings",
       "methods": [
         {
           "name": "<init>",
