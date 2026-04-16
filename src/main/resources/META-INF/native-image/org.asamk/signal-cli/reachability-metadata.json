@@ -1565,6 +1565,9 @@
       ]
     },
     {
+      "type": "kotlin.reflect.jvm.internal.impl.km.jvm.internal.JvmMetadataExtensions"
+    },
+    {
       "type": "kotlin.reflect.jvm.internal.impl.load.java.ErasedOverridabilityCondition"
     },
     {
@@ -10114,6 +10117,9 @@
     },
     {
       "glob": "META-INF/services/java.util.spi.ResourceBundleControlProvider"
+    },
+    {
+      "glob": "META-INF/services/kotlin.reflect.jvm.internal.impl.km.internal.extensions.MetadataExtensions"
     },
     {
       "glob": "META-INF/services/kotlin.reflect.jvm.internal.impl.resolve.ExternalOverridabilityCondition"
