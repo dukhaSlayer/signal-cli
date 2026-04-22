@@ -1,10 +1,22 @@
 # Changelog
 
-## [Unreleased]
+## [0.14.3] - 2026-04-22
+
+### Fixed
+
+- Fix sender key re-distribution on every group message (Thanks @meinecke)
+
+### Improved
+
+- Performance improvement when assigning admin role to multiple group members
+- Increase disconnect timeout for websocket connections
+- Release builds are now reproducible
 
 ### Changed
 
 - Send message results now surface server-advised retry time for plain rate-limit (HTTP 413) failures, not only for proof-required challenges. The `retryAfterSeconds` field in JSON-RPC `SendMessageResult` is populated whenever the server sends a `Retry-After` header. The canonical way to distinguish proof-required failures remains `token != null`. Text output includes "retry after N seconds" when known.
+- Add distinct JSON-RPC error code (6) for captcha rejection (Thanks @tonycpsu)
+- No longer sends busy call response to allow linked devices to accept call
 
 ## [0.14.2] - 2026-04-04
 
