@@ -40,6 +40,18 @@ update_arg_tag() {
 	echo "updated $file -> ${tag}${digest}"
 }
 
+update_source_date_epoch() {
+	local file="$1"
+	local current_timestamp
+	current_timestamp="$(date +%s)"
+	sed -i -E "s|^ARG SOURCE_DATE_EPOCH=\"[^\"]+\"$|ARG SOURCE_DATE_EPOCH=\"${current_timestamp}\"|" "$file"
+	echo "updated $file SOURCE_DATE_EPOCH -> ${current_timestamp}"
+}
+
 update_arg_tag reproducible-builds/build.Containerfile ZULU_TAG docker.io/azul/zulu-openjdk:
 update_arg_tag reproducible-builds/native.Containerfile GRAALVM_TAG container-registry.oracle.com/graalvm/native-image:
 update_arg_tag reproducible-builds/client.Containerfile RUST_TAG docker.io/rust:
+
+update_source_date_epoch reproducible-builds/build.Containerfile
+update_source_date_epoch reproducible-builds/native.Containerfile
+update_source_date_epoch reproducible-builds/client.Containerfile
