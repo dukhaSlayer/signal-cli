@@ -55,7 +55,7 @@ public class ProofRequiredException extends Exception {
         return name + " [" +
             "token='...'" +
             ", options=" + options.stream().map(java.util.Objects::toString).collect(Collectors.joining(",")) +
-            ", retryAfterSeconds=" + retryAfterSeconds +
+            ", retryAfterMilliseconds=" + retryAfterMilliseconds +
             ']';
     }
 }
