@@ -777,11 +777,29 @@
       "jniAccessible": true,
       "methods": [
         {
+          "name": "forName",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "forName",
+          "parameterTypes": [
+            "java.lang.String",
+            "boolean",
+            "java.lang.ClassLoader"
+          ]
+        },
+        {
           "name": "getCanonicalName",
           "parameterTypes": []
         },
         {
           "name": "getClassLoader",
+          "parameterTypes": []
+        },
+        {
+          "name": "getName",
           "parameterTypes": []
         },
         {
@@ -819,7 +837,27 @@
       ]
     },
     {
-      "type": "java.lang.ClassNotFoundException"
+      "type": "java.lang.ClassNotFoundException",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.String",
+            "java.lang.Throwable"
+          ]
+        }
+      ]
     },
     {
       "type": "java.lang.ClassValue"
@@ -960,12 +998,36 @@
           "parameterTypes": []
         },
         {
+          "name": "getContextClassLoader",
+          "parameterTypes": []
+        },
+        {
+          "name": "getId",
+          "parameterTypes": []
+        },
+        {
+          "name": "getName",
+          "parameterTypes": []
+        },
+        {
           "name": "getStackTrace",
           "parameterTypes": []
         },
         {
           "name": "isVirtual",
           "parameterTypes": []
+        },
+        {
+          "name": "setContextClassLoader",
+          "parameterTypes": [
+            "java.lang.ClassLoader"
+          ]
+        },
+        {
+          "name": "setName",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
         }
       ]
     },
@@ -980,7 +1042,15 @@
           ]
         },
         {
+          "name": "getCause",
+          "parameterTypes": []
+        },
+        {
           "name": "getMessage",
+          "parameterTypes": []
+        },
+        {
+          "name": "getStackTrace",
           "parameterTypes": []
         },
         {
@@ -1318,6 +1388,14 @@
       ]
     },
     {
+      "type": "java.util.concurrent.CopyOnWriteArrayList",
+      "fields": [
+        {
+          "name": "lock"
+        }
+      ]
+    },
+    {
       "type": "java.util.concurrent.ForkJoinTask",
       "fields": [
         {
@@ -1614,6 +1692,12 @@
           "name": "VARIABLES"
         }
       ]
+    },
+    {
+      "type": "kotlinx.coroutines.AwaitAll"
+    },
+    {
+      "type": "kotlinx.coroutines.AwaitAll$AwaitAllNode"
     },
     {
       "type": "kotlinx.coroutines.CancellableContinuationImpl",
@@ -1980,6 +2064,28 @@
       "type": "org.asamk.SignalControl.Error.InvalidNumber"
     },
     {
+      "type": "org.asamk.signal.GlobalConfig",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Integer",
+            "java.lang.String",
+            "java.lang.Boolean",
+            "java.lang.String",
+            "java.lang.String",
+            "java.lang.Boolean",
+            "java.lang.Boolean",
+            "org.asamk.signal.OutputType",
+            "org.asamk.signal.ServiceEnvironmentCli",
+            "org.asamk.signal.TrustNewIdentityCli",
+            "java.lang.Boolean",
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
       "type": "org.asamk.signal.Main",
       "jniAccessible": true,
       "methods": [
@@ -1991,6 +2097,31 @@
           "name": "main",
           "parameterTypes": [
             "java.lang.String[]"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.asamk.signal.OutputType"
+    },
+    {
+      "type": "org.asamk.signal.ServiceEnvironmentCli",
+      "methods": [
+        {
+          "name": "fromString",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.asamk.signal.TrustNewIdentityCli",
+      "methods": [
+        {
+          "name": "fromString",
+          "parameterTypes": [
+            "java.lang.String"
           ]
         }
       ]
@@ -6487,6 +6618,68 @@
     {
       "type": "org.signal.libsignal.zkgroup.profiles.ProfileKey",
       "allDeclaredFields": true
+    },
+    {
+      "type": "org.signal.network.api.SenderCertificate",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "setCertificate",
+          "parameterTypes": [
+            "byte[]"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.signal.network.api.SenderCertificate$ByteArrayDeserializer",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.signal.network.api.SenderCertificate$ByteArraySerializer"
+    },
+    {
+      "type": "org.signal.network.api.SubmitRecaptchaChallengePayload",
+      "methods": [
+        {
+          "name": "getCaptcha",
+          "parameterTypes": []
+        },
+        {
+          "name": "getToken",
+          "parameterTypes": []
+        },
+        {
+          "name": "getType",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.signal.network.util.JsonUtil$IdentityKeyDeserializer",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.signal.network.util.JsonUtil$ServiceIdDeserializer",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
     },
     {
       "type": "org.signal.storageservice.storage.protos.groups.AccessControl",
